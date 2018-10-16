@@ -1,0 +1,7 @@
+training/raw_images/
+training/sorted_genus/
+method_cnn/models/VGG16_2nd_method_dataug_110epft20ep.h5
+__pycache__
+method_features_extraction/__pycache__
+method_cnn/__pycache__
+method_features_extraction/clssifiers/__pycache__
