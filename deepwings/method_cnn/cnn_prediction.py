@@ -43,6 +43,9 @@ def cnn_pred(category='species', nb_pred=3, path_pred='prediction/raw_images'):
     
     if category=='species':
         model = load_model('method_cnn/models/VGG16_2nd_method_dataug_110epft20ep.h5')
+    else:
+        print('Only species classification is available in the CNN model')
+        return 0
 
     pred_datagen = ImageDataGenerator(rescale=1./255)
     pred_generator = pred_datagen.flow_from_directory(path_pred,

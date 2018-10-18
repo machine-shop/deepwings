@@ -27,6 +27,7 @@ This time, we propose two methods :
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. 
 ### Dependencies
 * Keras
+* TensorFlow <= 1.10.0
 * Numpy
 * Pandas
 * Python 3.5
