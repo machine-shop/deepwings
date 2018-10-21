@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Aug 15 09:42:09 2018
-
-@author: theo
-"""
 import cmath
 from cmath import exp, polar, pi
 
@@ -29,17 +24,21 @@ def sub_block_binarization(image, block_size = (100, 100), offset=0):
     """Divide the image into blocks, and binarize each one of them with 
     Otsu binarization
     
-    Args:
-        image (array): Grayscale image to binarize
-        block_size (tuple): Size of each block
-        offset (int): Number of pixels between the first column of blocks
-                      and the left side of the picture.
-                      Number of pixels between the first row of blocks
-                      and the upper bound of the picture.
+    Arguments
+    ---------
+    image : 2D array
+        Grayscale image to binarize
+    block_size : tuple
+        Size of each block
+    offset : int 
+        Number of pixels between the first column of blocks and the left side
+        of the picture. Number of pixels between the first row of blocks
+        and the upper bound of the picture.
                     
-    Returns:
-        binary (array): Binary image
-    
+    Returns
+    -------
+    binary : 2D array
+        Binary image
     """
     
     width = image.shape[1]
@@ -76,11 +75,19 @@ def block_binarization(image, step=20, side_block=100):
     """Superpose different block-binarized pictures with different offsets into
     one global binarized picture
     
-    Args:
-        image (array): Grayscale image to binarize
-        step (int): Step between each offset of the sub block binarized images
-        side_block (int): Side of the blocks in pixels
-    
+    Arguments
+    ---------
+    image : 2D array
+        Grayscale image to binarize
+    step : int 
+        Step between each offset of the sub block binarized images
+    side_block : int 
+        Side of the blocks in pixels
+   
+    Returns
+    -------
+    binary : 2D array
+        block binarized image
     """
     
     total = sub_block_binarization(image, block_size = (side_block, side_block), offset = 0)
@@ -94,14 +101,26 @@ def block_binarization(image, step=20, side_block=100):
 
 
 def clear_binary(binary):
-    """Remove pixels disconnected from to veins"""
+    """Remove pixels disconnected from to veins
+
+    Arguments
+    ---------
+    binary : 2D array
+        Block binarized image
+
+    Returns
+    -------
+    reconstructed : 2D array
+        Binarized image of veins cleared
+    """
+
     
     seed = np.copy(binary)
     seed[:,1:-1] = binary.max()
     mask = binary
 
-    filled = reconstruction(seed, mask, method='erosion')
-    return filled
+    reconstructed = reconstruction(seed, mask, method='erosion')
+    return reconstructed
 
 
 
@@ -158,17 +177,20 @@ def moore_neighborhood(current, backtrack): #y, x
    
 
 def boundary_tracing(region):
-    """Coordinates of the region's boundary.
-    The region must not have isolated points. 
+    """Coordinates of the region's boundary. The region must not have isolated 
+    points. 
     
-    Args:
-        region (obj)
+    Arguments
+    ---------
+    region : obj
+        Obtained with skimage.measure.regionprops()
 
-    Returns:
+    Returns
+    -------
+    boundary : 2D array
         List of coordinates of pixels in the boundary
         The first element is the most upper left pixel of the region.
         The following coordinates are in clockwise order.
-        
     """
     
     
@@ -214,7 +236,6 @@ def boundary_tracing(region):
         counter += 1
                 
         if (np.all(current==start) and np.all(backtrack==backtrack_start)):
-            
             break
     
     return np.array(boundary)
@@ -236,11 +257,16 @@ def symetric_list(n):
 def fourier_descriptors(boundary, n_descriptors):
     """Returns a list of the first complex Fourier descriptors of a boundary
     
-    Args:
-        boundary (list): List of coordinates of pixels part of the boundary
-        n_descriptors (int): Number of complex Fourier descriptors we want
+    Arguments
+    ---------
+    boundary : 2D array
+        List of coordinates of pixels part of the boundary
+    n_descriptors : int
+        Number of complex Fourier descriptors wanted
     
-    Retunrs:
+    Returns
+    -------
+    descriptors : 1D list
         List of the first (n_descriptors) complex Fourier descriptors of a boundary
     """
     y = boundary[:, 0]
@@ -268,6 +294,29 @@ def normalize_descriptors(complex_descriptors):
     return [round(polar(descriptor)[0]/mod_c1, 4) for descriptor in complex_descriptors[2:]]
 
 def create_img_label(cleared_binary):
+    """Create image label from binary picture
+
+    Arguments
+    ---------
+    cleared_binary : 2D array
+        Binary image cleared
+
+    Returns
+    -------
+    img_label : 2D array
+        Image label with cleared borders
+    markers : 2D array
+        Image label with relabelled regions
+    distances : 2D array
+        Distance map, the value of each pixel corresponds to its distance
+        to the closest pixel of background
+    labels : 2D array
+        Image label after watershed, with black border
+    """
+
+
+
+
         
     markers, _ = ndi.label(cleared_binary, structure=ndi.generate_binary_structure(2,1))
     markers, num_features = filter_and_label(markers)
@@ -697,16 +746,4 @@ class region_sorter():
         print('# Feature extraction lasted ' +str(round(time.time() - t, 4)) + 's')
         return nb_cells, output
             
-            
-                
-            
-            
-        
-      
-        
-    
-    
-    
-    
-    
     

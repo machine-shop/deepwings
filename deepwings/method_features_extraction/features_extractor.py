@@ -3,16 +3,14 @@ sys.path.append('../')
 import csv
 import image_processing as ip
 import matplotlib.pyplot as plt
-import numpy as np
 import os
 import pandas as pd
 from scipy import ndimage as ndi
 from shutil import rmtree
-from skimage.morphology import reconstruction, watershed
+from skimage.morphology import watershed
 from skimage.io import imread
 from skimage.color import rgb2gray
 from skimage.transform import resize
-import utils
 import time
 from skimage.segmentation import clear_border
 
@@ -37,19 +35,22 @@ class wing_photo():
         """Process a wing_photo() object and extracts features from its cells
         if the wing_photo() object is valid
         
-        Args:
-            plot (bool): if true, an explanatory figures is plotted
-                         in 'method_feature_extraction/explanatory_figures/'
-            n_descriptors (int): number of Fourier descriptors we want to 
-                              extract for each cell
+        Arguments
+        ---------
+        plot : bool
+            if true, an explanatory figures is plotted
+            in 'method_feature_extraction/explanatory_figures/'
+        n_descriptors : int 
+            number of Fourier descriptors we want to extract for each cell
                              
-        Returns:
-            csv_name (str): 'data_6cells.csv' or 'data_7cells.csv' depending on
-                            the number of cells detected.
-                            If the image is invalid, returns None
-            output (list): row containing the name of the picture and all 
-                           extracted features.
-                           If the image is invalid, returns None
+        Returns
+        -------
+        csv_name : str 
+            'data_6cells.csv' or 'data_7cells.csv' depending on
+            the number of cells detected. If the image is invalid, returns None
+        output : 2D list 
+            row containing the name of the picture and all extracted features.
+            If the image is invalid, returns None
         """
         
         min_area = 11000
@@ -143,21 +144,24 @@ class wing_photo():
 
 def extract_pictures(folder_path, paths_images, plot, n_descriptors, continue_csv):
     """Extract features from pictures satisfying some criteria:
-    
-    We only keep pictures of bees having at least [min_images] per [category]
+    We only keep pictures of bees having at least <min_images> per <category>
             
-    Args:
-        folder_path (str): path of the folder where raw images are stored
-        category (str): level of classification, must be 'genus' or 'species'
-        min_images (int): min number of image per category (default is 20)
-        plot (bool): if true, explanatory figures will be plotted
-                      in 'method_feature_extraction/explanatory_figures/'
-        n_descriptors (int): number of Fourier descriptors we want to 
-                              extract for each cell
-        continue_csv (bool): if true, continue the extracting process
-                             from already existing csv_files
-                             if false, erase all csv_files and restart from
-                             scratch
+    Arguments
+    ---------
+    folder_path : str 
+        path of the folder where raw images are stored
+    category : str 
+        level of classification, must be 'genus' or 'species'
+    min_images : int (default 20)
+        min number of image per category
+    plot : bool
+        if true, explanatory figures will be plotted
+        in 'method_feature_extraction/explanatory_figures/'
+    n_descriptors : int
+        number of Fourier descriptors we want to extract for each cell
+    continue_csv : bool
+        if true, continue the extracting process from already existing csv_files
+        if false, erase all csv_files and restart from scratch
             
     """
     # Clear the repositories
