@@ -15,6 +15,7 @@ import time
 from skimage.segmentation import clear_border
 
 
+from skimage.filters import threshold_otsu
 class wing_photo():
    
     
@@ -60,7 +61,9 @@ class wing_photo():
         img_gray = resize(img_gray, (1600, 2000))
         
         t = time.time()
-        binary = ip.block_binarization(img_gray, 20, 100)
+        thresh = threshold_otsu(img_gray)
+        binary = img_gray > thresh
+        # binary = ip.block_binarization(img_gray, 20, 100)
         print('# Block binarization lasted ' +str(round(time.time() - t, 4)) + 's')
         
         cleared_binary = ip.clear_binary(binary)
@@ -83,28 +86,31 @@ class wing_photo():
         
         
         if plot:
-            fig, ax = plt.subplots(nrows=2, ncols=5, figsize=(40, 20))
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(40, 20))
             
             plt.suptitle(self.file_name, fontsize=16)
+            ax.set_title('Blocks binarization')
+            ax.imshow(binary)
+
             
-            ax[0, 0].set_title('Grayscale')
-            ax[0, 0].imshow(img_gray)
-            ax[0, 1].set_title('Blocks binarization')
-            ax[0, 1].imshow(binary)
-            ax[0, 2].set_title('Reconstructed and eroded')
-            ax[0, 2].imshow(cleared_binary)
-            ax[0, 3].set_title('Markers')
-            ax[0, 3].imshow(markers)
-            ax[0, 4].set_title('Distances')
-            ax[0, 4].imshow(distances)
-            ax[1, 0].set_title('Distances reversed')
-            ax[1, 0].imshow(-distances)
-            ax[1, 1].set_title('Labels')
-            ax[1, 1].imshow(labels)
-            ax[1, 2].set_title('Image label')
-            ax[1, 2].imshow(img_label)
-            ax[1, 3].set_title('Before region filtering')
-            ax[1, 4].set_title('After region filtering')
+            # ax[0, 0].set_title('Grayscale')
+            # ax[0, 0].imshow(img_gray)
+            # ax[0, 1].set_title('Blocks binarization')
+            # ax[0, 1].imshow(binary)
+            # ax[0, 2].set_title('Reconstructed and eroded')
+            # ax[0, 2].imshow(cleared_binary)
+            # ax[0, 3].set_title('Markers')
+            # ax[0, 3].imshow(markers)
+            # ax[0, 4].set_title('Distances')
+            # ax[0, 4].imshow(distances)
+            # ax[1, 0].set_title('Distances reversed')
+            # ax[1, 0].imshow(-distances)
+            # ax[1, 1].set_title('Labels')
+            # ax[1, 1].imshow(labels)
+            # ax[1, 2].set_title('Image label')
+            # ax[1, 2].imshow(img_label)
+            # ax[1, 3].set_title('Before region filtering')
+            # ax[1, 4].set_title('After region filtering')
         
         #ax[1, 4].imshow(skeleton)
         
@@ -137,6 +143,13 @@ class wing_photo():
             plt.close()
             
         csv_name, output = rs.extract_features()
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(40, 20))
+
+        ax.set_title('Blocks binarization')
+        ax.imshow(binary)
+        plt.savefig(path_exp_fig + self.file_name)
+        plt.close()
+
       
         return csv_name, output
         
