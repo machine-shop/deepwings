@@ -16,9 +16,6 @@ from skimage.segmentation import clear_border
 from skimage.util import view_as_blocks
 import time
     
-    
-
-
 
 def sub_block_binarization(image, block_size = (100, 100), offset=0):
     """Divide the image into blocks, and binarize each one of them with 
@@ -67,8 +64,6 @@ def sub_block_binarization(image, block_size = (100, 100), offset=0):
             binary[y_start : y_start + bh, x_start : x_start + bw] = focus
             
     return binary
-
-   
 
 
 def block_binarization(image, step=20, side_block=100):
@@ -508,7 +503,7 @@ class region_sorter():
         nb_valid_neighbors = nb_neighbors - count_exotic
         score = nb_valid_neighbors*np.array(self.areas)
         score[np.array(self.centroids_x) > 0.6*self.img_label.shape[1]] = 0
-            
+        score[np.array(self.eccentricities) > 0.975] = 0
         self.label_center = self.labels[np.argmax(score)]
         print('# Finding central cell lasted ' +str(round(time.time() - t, 4)) + 's')
         

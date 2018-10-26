@@ -60,7 +60,7 @@ def main():
         default=15)
     parser.add_argument('-p', '--plot',
         action='store_true',
-        help="If True, plots figures in /data/enhanced_images/",)
+        help="If True, plots figures in valid_images/ or invalid_images/")
     parser.add_argument('-t', '--train', 
         type=str,
         help= "Choose a model : only 'ann' available for now",
