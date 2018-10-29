@@ -6,6 +6,7 @@ import features_extractor as fe
 import argparse
 import utils
 import cnn_prediction
+import cnn_training
 import ann_classifier
 import os
 
@@ -82,6 +83,7 @@ def main():
         default=0)
     
     
+    
 
     # Array for all arguments passed to script
     args = parser.parse_args()
@@ -148,11 +150,13 @@ def main():
                                  continue_csv=False)
         elif step == 'train_ann':
             ann_classifier.train(category = args.category)
+        elif step == 'train_cnn':
+            model = cnn_training.build_model()
+            trained = cnn_training.train_model(model)
         elif step == 'pred_ann':
             ann_classifier.predict(category=args.category,
                                    plot=args.plot,
-                                   n_descriptors=args.n_fourier_descriptors,
-                                   )
+                                   n_descriptors=args.n_fourier_descriptors)
         elif step == 'pred_cnn':
             cnn_prediction.cnn_pred(category = args.category)
         

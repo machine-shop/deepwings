@@ -1,6 +1,6 @@
 image_names,prediction_1,score_1,prediction_2,score_2,prediction_3,score_3
 005 Osmia ribifloris f right 4x.jpg,osmia_ribifloris,0.9996,osmia_lignaria,0.0004,osmia_texana,0.0
-014 Osmia texana m right 4x.jpg,osmia_texana,0.8087,osmia_coloradensis,0.1856,osmia_lignaria,0.0027
+014 Osmia texana m right 4x.jpg,osmia_texana,0.8088,osmia_coloradensis,0.1856,osmia_lignaria,0.0027
 26 Lasioglossum rohweri f left 4x.jpg,lasioglossum_rohweri,0.9996,lasioglossum_pilosum,0.0003,lasioglossum_zephyrum,0.0002
 30 Lasioglossum rohweri f left 4x bx.jpg,lasioglossum_rohweri,0.9998,lasioglossum_zephyrum,0.0002,lasioglossum_pilosum,0.0
 8 Lasioglossum zephyrum f left 4x.jpg,lasioglossum_zephyrum,0.9208,lasioglossum_rohweri,0.0763,lasioglossum_mawispb,0.0025

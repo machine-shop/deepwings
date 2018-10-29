@@ -10,3 +10,5 @@ deepwings/method_cnn/models/VGG16_2nd_method_dataug_110epft20ep.h5
 **/valid_images
 **/invalid_images
 **/__pycache__
+**/sorted_species
+**/sorted_genus
