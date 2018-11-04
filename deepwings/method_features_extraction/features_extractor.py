@@ -15,7 +15,6 @@ import time
 from skimage.segmentation import clear_border
 
 
-from skimage.filters import threshold_otsu
 class wing_photo():
    
     
@@ -32,7 +31,7 @@ class wing_photo():
     
     
     
-    def process_and_extract(self, plot, n_descriptors, path_exp_fig):
+    def process_and_extract(self, plot, n_descriptors, folder_path):
         """Process a wing_photo() object and extracts features from its cells
         if the wing_photo() object is valid
         
@@ -61,9 +60,7 @@ class wing_photo():
         img_gray = resize(img_gray, (1600, 2000))
         
         t = time.time()
-        thresh = threshold_otsu(img_gray)
-        binary = img_gray > thresh
-        # binary = ip.block_binarization(img_gray, 20, 100)
+        binary = ip.block_binarization(img_gray, 20, 100)
         print('# Block binarization lasted ' +str(round(time.time() - t, 4)) + 's')
         
         cleared_binary = ip.clear_binary(binary)
@@ -89,9 +86,6 @@ class wing_photo():
             fig, ax = plt.subplots(nrows=2, ncols=5, figsize=(40, 20))
             
             plt.suptitle(self.file_name, fontsize=16)
-            # ax.set_title('Blocks binarization')
-            # ax.imshow(binary)
-
             
             ax[0, 0].set_title('Grayscale')
             ax[0, 0].imshow(img_gray)
@@ -139,17 +133,14 @@ class wing_photo():
         
         if plot:
             rs.plot(img_gray, ax[1, 4])
-            plt.savefig(path_exp_fig + self.file_name)
+            if rs.valid_image: 
+                path_figure = folder_path + 'valid_images/'
+            else:
+                path_figure = folder_path + 'invalid_images/'
+            plt.savefig(path_figure + self.file_name)
             plt.close()
             
         csv_name, output = rs.extract_features()
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(40, 20))
-
-        ax.set_title('Blocks binarization')
-        ax.imshow(binary)
-        plt.savefig(path_exp_fig + self.file_name)
-        plt.close()
-
       
         return csv_name, output
         
@@ -162,7 +153,7 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors, continue_cs
     Arguments
     ---------
     folder_path : str 
-        path of the folder where raw images are stored
+        path of the prediction or training folder 
     category : str 
         level of classification, must be 'genus' or 'species'
     min_images : int (default 20)
@@ -189,8 +180,11 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors, continue_cs
                 print("data_7cells.csv not found")
                 return 0
             if plot:
-                if not os.path.exists(folder_path + 'explanatory_figures/'):
-                    os.makedirs(folder_path + 'explanatory_figures/')
+                if not os.path.exists(folder_path + 'valid_images/'):
+                    os.makedirs(folder_path + 'valid_images/')
+                if not os.path.exists(folder_path + 'invalid_images/'):
+                    os.makedirs(folder_path + 'invalid_images/')
+
         except OSError:
             print('Error: Finding directories')
                 
@@ -210,9 +204,13 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors, continue_cs
             if os.path.exists(folder_path + "invalid.csv"):
                 os.remove(folder_path + "invalid.csv")
             if plot:
-                if os.path.exists(folder_path + 'explanatory_figures/'):
-                    rmtree(folder_path + 'explanatory_figures/')
-                os.makedirs(folder_path + 'explanatory_figures/')
+                if os.path.exists(folder_path + 'valid_images/'):
+                    rmtree(folder_path + 'valid_images/')
+                os.makedirs(folder_path + 'valid_images/')
+                if os.path.exists(folder_path + 'invalid_images/'):
+                    rmtree(folder_path + 'invalid_images/')
+                os.makedirs(folder_path + 'invalid_images/')
+
         except OSError:
                 print('Error: Creating directories ')
                 
@@ -245,9 +243,6 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors, continue_cs
             with open(folder_path +  csv_name, 'a') as csv_file:
                 writer = csv.writer(csv_file)
                 writer.writerow(header)
-                
-        
-    
     
     n = len(paths_images)
           
@@ -262,10 +257,9 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors, continue_cs
             print('# Already extracted')
         else:
             photo = wing_photo(path)
-            path_exp_fig = folder_path + 'explanatory_figures/'
             nb_cells, output = photo.process_and_extract(plot,
                                                          n_descriptors,
-                                                         path_exp_fig)
+                                                         folder_path)
              
             if not nb_cells: #if the image is not valid
                 print('# Invalid image')
