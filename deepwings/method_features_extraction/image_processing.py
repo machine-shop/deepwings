@@ -92,7 +92,7 @@ def block_binarization(image, step=20, side_block=100):
         offset += step
     thresh = threshold_otsu(total, nbins = 60)
     
-    return total > thresh
+    return total #> thresh
 
 
 def clear_binary(binary):
@@ -620,14 +620,16 @@ class region_sorter():
                     
      
     
-    def plot(self, img_gray, ax):
+    def plot(self, img_gray, ax, fontsize=7):
         
         t = time.time()
         
         self.update_img_label()
             
         #print('mixing images')
-        image_label_overlay = label2rgb(self.img_label, image=img_gray)
+        image_label_overlay = label2rgb(self.img_label,
+                                        image=img_gray,
+                                    bg_label=0)
         
         
         ax.imshow(image_label_overlay)
@@ -639,22 +641,22 @@ class region_sorter():
             offset_x = 30
             offset_y = 0
             ax.text(self.centroids_x[i] + offset_x, self.centroids_y[i] + offset_y,
-                    "l: " + str(self.labels[i]), color='white', fontsize=7, fontweight='bold')
+                    "l: " + str(self.labels[i]), color='white', fontsize=fontsize, fontweight='bold')
             offset_y +=step
             ax.text(self.centroids_x[i] + offset_x, self.centroids_y[i] + offset_y ,
-                    "a: "+str(self.areas[i]), color='white', fontsize=7, fontweight='bold')
+                    "a: "+str(self.areas[i]), color='white', fontsize=fontsize, fontweight='bold')
             if (self.angles):
                 offset_y += step
                 ax.text(self.centroids_x[i] + offset_x, self.centroids_y[i] + offset_y,
-                    "o: "+str(self.angles[i])+"°", color='white', fontsize=7, fontweight='bold')
+                    "o: "+str(self.angles[i])+"°", color='white', fontsize=fontsize, fontweight='bold')
             if self.cells and self.valid_image :
                 offset_y += step
                 ax.text(self.centroids_x[i] +offset_x, self.centroids_y[i] + offset_y,
-                    "c: "+str(self.cells[i]), color='white', fontsize=7, fontweight='bold')
+                    "c: "+str(self.cells[i]), color='white', fontsize=fontsize, fontweight='bold')
             if self.eccentricities:
                 offset_y += step
                 ax.text(self.centroids_x[i] +offset_x, self.centroids_y[i] + offset_y,
-                    "e: "+str(self.eccentricities[i]), color='white', fontsize=7, fontweight='bold')
+                    "e: "+str(self.eccentricities[i]), color='white', fontsize=fontsize, fontweight='bold')
                 
             
                 
@@ -664,7 +666,7 @@ class region_sorter():
             offset_y += step
             idx = self.labels.index(self.label_center)
             ax.text(self.centroids_x[idx] + offset_x, self.centroids_y[idx] + offset_y,
-                    "(central cell)", color='white', fontsize=7, fontweight='bold')
+                    "(central cell)", color='white', fontsize=fontsize, fontweight='bold')
         
         if self.valid_image != None:
             if self.valid_image:
@@ -673,7 +675,7 @@ class region_sorter():
             else: 
                 txt = 'Image not valid'
                 color = 'r'
-            ax.text(0, 70, txt, color=color, fontsize=14, fontweight='bold')
+            ax.text(0, 70, txt, color=color, fontsize=2*fontsize, fontweight='bold')
             
             
         
