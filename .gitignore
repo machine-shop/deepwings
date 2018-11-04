@@ -1,8 +1,14 @@
 deepwings/training/raw_images/
+deepwings/training/valid_images/
+deepwings/training/invalid_images/
 deepwings/training/sorted_genus/
+deepwings/training/sorted_species/
 deepwings/method_cnn/models/VGG16_2nd_method_dataug_110epft20ep.h5
 deepwings/__pycache__
 __pycache__
 deepwings/method_features_extraction/__pycache__
 deepwings/method_cnn/__pycache__
 deepwings/method_features_extraction/clssifiers/__pycache__
+to_do.txt
+notes.txt
+**/*.ipynb

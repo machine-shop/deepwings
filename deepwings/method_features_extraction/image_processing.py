@@ -97,7 +97,7 @@ def block_binarization(image, step=20, side_block=100):
         offset += step
     thresh = threshold_otsu(total, nbins = 60)
     
-    return total > thresh
+    return total #> thresh
 
 
 def clear_binary(binary):
