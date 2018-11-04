@@ -12,3 +12,5 @@ deepwings/method_features_extraction/clssifiers/__pycache__
 to_do.txt
 notes.txt
 **/*.ipynb
+**/*.csv
+**/*.pyc
