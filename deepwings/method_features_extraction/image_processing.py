@@ -12,7 +12,6 @@ from skimage.filters import threshold_otsu
 from skimage.measure import regionprops
 from skimage.morphology import reconstruction, watershed
 from skimage.segmentation import clear_border
-from skimage.util import view_as_blocks
 
 
 def sub_block_binarization(image, block_size=(100, 100), offset=0):
@@ -132,12 +131,14 @@ def filter_and_label(img_label):
     """
 
     t = time.time()
-    re_labeled = np.zeros((img_label.shape[0], img_label.shape[1]))
-    regions = regionprops(img_label)
+    re_labeled = np.zeros(img_label.shape, dtype=int)
+    regions = regionprops(img_label, coordinates='xy')
     counter = 0
+
+    threshold = img_label.shape[0]*img_label.shape[1]*6.25e-4
     for region in regions:
         area = region.area
-        if area > 2000:
+        if area > threshold:
             counter += 1
             coords = region.coords
             y = coords[:, 0]
@@ -316,6 +317,7 @@ def create_img_label(cleared_binary):
     labels : 2D array
         Image label after watershed, with black border
     """
+    t = time.time()
 
     markers, _ = ndi.label(cleared_binary,
                            structure=ndi.generate_binary_structure(2, 1))
@@ -329,6 +331,9 @@ def create_img_label(cleared_binary):
     labels[:, 0] = 0
     img_label = clear_border(labels)
 
+    duration = round(time.time() - t, 4)
+    print(f'# Creating img label lasted {duration}s')
+
     return img_label, markers, distances, labels
 
 
@@ -338,7 +343,10 @@ class region_sorter():
     def __init__(self, img_label, file_name):
         self.file_name = file_name
         self.img_label = img_label
-        self.regions = regionprops(img_label)
+        self.area_tot = img_label.shape[0]*img_label.shape[1]
+        self.height = img_label.shape[0]
+        self.width = img_label.shape[1]
+        self.regions = regionprops(img_label, coordinates='xy')
         self.labels = []
         self.areas = []
         self.centroids_x = []
@@ -362,13 +370,17 @@ class region_sorter():
             self.centroids_y.append(region.centroid[0])
             self.centroids_x.append(region.centroid[1])
 
-    def filter_area(self, area_min=5300, area_max=300000):
-
+    def filter_area(self, area_min=1.656e-3, area_max=9.3e-2):
+        # 9.3e-2
         t = time.time()
+
+        thresh_min = self.area_tot*area_min
+        thresh_max = self.area_tot*area_max
+
         to_delete = []
         for i in range(len(self.areas)):
             area = self.areas[i]
-            if area < area_min or area > area_max:
+            if area < thresh_min or area > thresh_max:
                 to_delete.append(i)
         self.delete(to_delete)
         duration = round(time.time() - t, 4)
@@ -416,36 +428,42 @@ class region_sorter():
         duration = round(time.time() - t, 4)
         print(f'# Update image label lasted {duration}s')
 
-    def neighbors_region(self, i):
-        neighbors = [self.labels[i]]
-        for (y, x) in self.regions[i].coords:
-            focus = self.img_label[y-1: y+2, x-1: x+2]
-            focus = focus.flatten()
-            if(len(set(focus)) > 1):
-                buffer = []
-                for label in set(focus):
-                    if ((label in self.labels) and (label not in neighbors)):
-                        buffer.append(label)
-                neighbors += buffer
-
-        return neighbors[1:]
-
     def find_neighbors(self, blockshape=(2, 2)):
         t = time.time()
-        self.update_img_label()
-        view = view_as_blocks(self.img_label, blockshape).astype(int)
-        flatten = view.reshape(view.shape[0]*view.shape[1], -1)
-        unique = np.unique(flatten, axis=0)
-        nozeros = unique[np.all(unique != 0, axis=1)]
+
+        up = self.img_label[:-1, :]
+        down = self.img_label[1:, :]
+        left = self.img_label[:, :-1]
+        right = self.img_label[:, 1:]
+
+        # Vertical superposition
+        vert_changes = np.logical_and(up != down,
+                                      np.logical_and(up != 0, down != 0))
+        pairs_v = np.array([up[vert_changes], down[vert_changes]])
+        pairs_v = np.transpose(pairs_v)
+        pairs_v = np.sort(pairs_v, axis=1)
+
+        # Horizontal superposition
+        hori_changes = np.logical_and(left != right,
+                                      np.logical_and(left != 0, right != 0))
+        pairs_h = np.array([left[hori_changes],
+                            right[hori_changes]])
+        pairs_h = np.transpose(pairs_h)
+        pairs_h = np.sort(pairs_h, axis=1)
+
+        # All pairs
+        pairs_tot = np.concatenate((pairs_v, pairs_h), axis=0)
+        pairs_tot = np.unique(pairs_tot, axis=0)
+
         all_neighbors = [[]] * len(self.labels)
 
-        for arr in nozeros:
-            lst = list(set(arr))
-            for label in lst:
-                idx = self.labels.index(label)
-                all_neighbors[idx] = list(set(all_neighbors[idx] +
-                                              ([int(nlabel) for nlabel in lst
-                                                if nlabel != label])))
+        for pair in list(pairs_tot):
+            idx0 = self.labels.index(pair[0])
+            all_neighbors[idx0] = all_neighbors[idx0] + [pair[1]]
+            idx1 = self.labels.index(pair[1])
+            all_neighbors[idx1] = all_neighbors[idx1] + [pair[0]]
+
+        all_neighbors = [list(set(neighbors)) for neighbors in all_neighbors]
         self.neighbors = all_neighbors
 
         duration = round(time.time() - t, 4)
@@ -624,22 +642,25 @@ class region_sorter():
         duration = round(time.time() - t, 4)
         print(f'# Identifying regions lasted {duration}s')
 
-    def plot(self, img_gray, ax, fontsize=7):
+    def plot(self, ax, img_gray=None, fontsize=7):
         t = time.time()
 
         self.update_img_label()
 
         # print('mixing images')
-        image_label_overlay = label2rgb(self.img_label,
-                                        image=img_gray,
-                                        bg_label=0)
+        if img_gray:
+            background = label2rgb(self.img_label,
+                                   image=img_gray,
+                                   bg_label=0)
+        else:
+            background = self.img_label
 
-        ax.imshow(image_label_overlay)
+        ax.imshow(background)
         ax.scatter(self.centroids_x, self.centroids_y, color='r')
 
+        step = int(self.height*0.02)
+        offset_x = int(self.width*0.015)
         for i in range(len(self.labels)):
-            step = 35
-            offset_x = 30
             offset_y = 0
             ax.text(self.centroids_x[i] + offset_x,
                     self.centroids_y[i] + offset_y,

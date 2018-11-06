@@ -3,12 +3,10 @@ import os
 import pandas as pd
 from scipy import ndimage as ndi
 from shutil import rmtree
-from skimage.morphology import watershed
 from skimage.io import imread
 from skimage.color import rgb2gray
 from skimage.transform import resize
 import time
-from skimage.segmentation import clear_border
 
 from method_features_extraction import image_processing as ip
 import matplotlib.pyplot as plt
@@ -47,8 +45,6 @@ class wing_photo():
             If the image is invalid, returns None
         """
 
-        min_area = 11000
-        max_area = 300000
         image = imread(self.path)[:, :, 0]
         img_gray = rgb2gray(image)
         img_gray = resize(img_gray, (1600, 2000))
@@ -61,21 +57,8 @@ class wing_photo():
         cleared_binary = ip.clear_binary(binary)
         cleared_binary = ndi.binary_erosion(cleared_binary, iterations=5)
 
-        t = time.time()
-        binary_structure = ndi.generate_binary_structure(2, 1)
-        markers, _ = ndi.label(cleared_binary,
-                               structure=binary_structure)
-        markers, num_features = ip.filter_and_label(markers)
-        if num_features > 255:
-            print("### Warning : more than 255 regions detected")
-        distances = ndi.distance_transform_edt(cleared_binary)
-        labels = watershed(-distances, markers)
-        labels[0, :] = 0
-        labels[:, -1] = 0
-        labels[:, 0] = 0
-        img_label = clear_border(labels)
-        duration = round(time.time() - t, 4)
-        print(f'# Creating img label lasted {duration}s')
+        img_label, markers, distances, labels = ip.create_img_label(
+                                                   cleared_binary)
 
         if plot:
             fig, ax = plt.subplots(nrows=2, ncols=5, figsize=(40, 20))
@@ -101,22 +84,26 @@ class wing_photo():
             ax[1, 4].set_title('After region filtering')
 
         rs = ip.region_sorter(img_label, self.file_name)
+        print(rs.labels)
 
-        rs.filter_area(min_area, max_area)
+        rs.filter_area()
         rs.filter_weird_shapes()
+
         if plot:
             rs.plot(img_gray, ax[1, 3])
 
+        rs.update_img_label()
         rs.find_neighbors()
         rs.filter_neighbors()
-        rs.compute_eccentricities()
 
+        rs.compute_eccentricities()
         rs.find_central_cell()
+
         rs.compute_angles()
         rs.filter_angles()
 
         rs.filter_annoying_cell()
-        rs.update_center()
+        # rs.update_center()
 
         rs.identify_regions()
         rs.compute_fd(n_descriptors)
@@ -144,6 +131,8 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors,
     ---------
     folder_path : str
         path of the prediction or training folder
+    path_images : str
+        Input raw images folder path
     category : str
         level of classification, must be 'genus' or 'species'
     min_images : int (default 20)
