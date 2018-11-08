@@ -114,18 +114,16 @@ def main():
                                         min_images=args.min_images,
                                         category=args.category)
             paths_images = image_sorter.generate_image_paths()
-            fe.extract_pictures(folder_path='training/',
-                                paths_images=paths_images,
+            fe.extract_pictures(paths_images=paths_images,
                                 plot=args.plot,
                                 n_descriptors=args.n_fourier_descriptors,
                                 continue_csv=not(args.restart))
         elif step == 'extraction_pred':  # Features extraction
-            directory = 'prediction/raw_images/test/'
+            directory = 'prediction/raw_images/'
             paths_images = []
             for image_name in os.listdir(directory):
                 paths_images.append(directory + image_name)
-            fe.extract_pictures(folder_path='prediction/',
-                                paths_images=paths_images,
+            fe.extract_pictures(paths_images=paths_images,
                                 plot=args.plot,
                                 n_descriptors=args.n_fourier_descriptors,
                                 continue_csv=False)

@@ -1,6 +1,8 @@
 import os
 from keras.models import load_model
 from keras.preprocessing.image import ImageDataGenerator
+import skimage.transform as sk_tf
+import skimage.io as sk_io
 import numpy as np
 import csv
 
@@ -34,8 +36,6 @@ def cnn_pred(category='species', nb_pred=3, path_pred='prediction/raw_images'):
         print('ERROR : folder not found: ' + path_pred)
         return 0
 
-    images = sorted(os.listdir(path_pred+'/test/'))
-    number_images = len(images)
     if category == 'species':
         path_model = 'method_cnn/models/VGG16_2nd_method_dataug_110epft20ep.h5'
         model = load_model(path_model)
@@ -43,18 +43,28 @@ def cnn_pred(category='species', nb_pred=3, path_pred='prediction/raw_images'):
         print('Only species classification is available in the CNN model')
         return 0
 
-    pred_datagen = ImageDataGenerator(rescale=1./255)
-    pred_generator = pred_datagen.flow_from_directory(path_pred,
-                                                      target_size=(150, 150),
-                                                      batch_size=number_images,
-                                                      class_mode=None,
-                                                      shuffle=False)
-    predictions = model.predict_generator(pred_generator)
+    images = sorted(os.listdir(path_pred))
+    number_images = len(images)
+    predictions = []
+    for image_name in images:
+        image_path = os.path.join(path_pred, image_name)
+        image_rgb = sk_io.imread(image_path)
+        resized = sk_tf.resize(image_rgb, (150, 150))
+        dim_4 = np.expand_dims(resized, axis=0)
+        prediction = model.predict(dim_4)
+        predictions.append(prediction)
 
-    if os.path.exists('prediction/prediction_cnn.csv'):
-        os.remove('prediction/prediction_cnn.csv')
+    # print(predictions)
 
-    with open('prediction/prediction_cnn.csv', 'a') as csv_file:
+    # pred_datagen = ImageDataGenerator(rescale=1./255)
+    # pred_generator = pred_datagen.flow_from_directory(path_pred,
+                                                      # target_size=(150, 150),
+                                                      # batch_size=number_images,
+                                                      # class_mode=None,
+                                                      # shuffle=False)
+    # predictions = model.predict_generator(pred_generator)
+
+    with open('prediction/prediction_cnn.csv', 'w') as csv_file:
         writer = csv.writer(csv_file)
         columns = ['image_names']
         for i in range(1, nb_pred + 1):
@@ -62,6 +72,7 @@ def cnn_pred(category='species', nb_pred=3, path_pred='prediction/raw_images'):
         writer.writerow(columns)
 
         for i, pred in enumerate(predictions):
+            pred = pred[0]
             row = [images[i]]
             for i in range(nb_pred):
                 idx_max = np.argmax(pred)

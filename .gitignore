@@ -1,6 +1,6 @@
 deepwings/training/raw_images/
-**/valid_images/
-**/invalid_images/
+**/valid_images
+**/invalid_images
 **/sorted_genus/
 **/sorted_species/
 deepwings/method_cnn/models/*.h5
@@ -14,3 +14,4 @@ notes.txt
 **/*.ipynb
 **/*.csv
 **/*.pyc
+.ropeproject

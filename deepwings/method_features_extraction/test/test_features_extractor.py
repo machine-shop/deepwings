@@ -1,8 +1,7 @@
-import matplotlib as plt
-
-from method_features_extraction import features_extractor as fe
+import numpy as np
 
 
 def test_process_and_extract():
+    np.array([1])
 
     assert False

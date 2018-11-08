@@ -2,141 +2,119 @@ import csv
 import os
 import pandas as pd
 from scipy import ndimage as ndi
-from shutil import rmtree
 from skimage.io import imread
 from skimage.color import rgb2gray
-from skimage.transform import resize
-import time
 
 from method_features_extraction import image_processing as ip
 import matplotlib.pyplot as plt
 
 
-class wing_photo():
+def process_and_extract(path_raw_image, plot=False, n_descriptors=15):
+    """Process a wing_photo() object and extracts features from its cells
+    if the wing_photo() object is valid
 
-    def __init__(self, file_path):
-        self.path = file_path
-        self.information = file_path.split('/')
-        self.file_name = self.information[-1]
-        splitted = self.file_name.split(' ')
-        self.family = splitted[1]
-        self.species = splitted[2]
-        self.image = imread(file_path)[:, :, 0]
+    Arguments
+    ---------
+    path_raw_image : str
+        path of the image to process
+    plot : bool
+        if true, an explanatory figures is plotted
+        in 'method_feature_extraction/explanatory_figures/'
+    n_descriptors : int
+        number of Fourier descriptors we want to extract for each cell
 
-    def process_and_extract(self, plot, n_descriptors, folder_path):
-        """Process a wing_photo() object and extracts features from its cells
-        if the wing_photo() object is valid
+    Returns
+    -------
+    csv_name : str
+        'data_6cells.csv' or 'data_7cells.csv' depending on
+        the number of cells detected. If the image is invalid, returns None
+    output : 2D list
+        row containing the name of the picture and all extracted features.
+        If the image is invalid, returns None
+    """
+    filename = path_raw_image.split('/')[-1]
+    parent_folder = path_raw_image.split('/')[-3]
 
-        Arguments
-        ---------
-        plot : bool
-            if true, an explanatory figures is plotted
-            in 'method_feature_extraction/explanatory_figures/'
-        n_descriptors : int
-            number of Fourier descriptors we want to extract for each cell
+    image_rgb = imread(path_raw_image)
+    img_gray = rgb2gray(image_rgb)
 
-        Returns
-        -------
-        csv_name : str
-            'data_6cells.csv' or 'data_7cells.csv' depending on
-            the number of cells detected. If the image is invalid, returns None
-        output : 2D list
-            row containing the name of the picture and all extracted features.
-            If the image is invalid, returns None
-        """
+    binary = ip.block_binarization(img_gray, 20, 100)
 
-        image = imread(self.path)[:, :, 0]
-        img_gray = rgb2gray(image)
-        img_gray = resize(img_gray, (1600, 2000))
+    cleared_binary = ip.clear_binary(binary)
+    cleared_binary = ndi.binary_erosion(cleared_binary, iterations=5)
 
-        t = time.time()
-        binary = ip.block_binarization(img_gray, 20, 100)
-        duration = round(time.time() - t, 4)
-        print(f'# Block binarization lasted {duration}s')
+    img_label, markers, distances, labels = ip.create_img_label(
+                                               cleared_binary)
 
-        cleared_binary = ip.clear_binary(binary)
-        cleared_binary = ndi.binary_erosion(cleared_binary, iterations=5)
+    if plot:
+        fig, ax = plt.subplots(nrows=2, ncols=5, figsize=(40, 20))
+        plt.suptitle(filename, fontsize=16)
 
-        img_label, markers, distances, labels = ip.create_img_label(
-                                                   cleared_binary)
+        ax[0, 0].set_title('Grayscale')
+        ax[0, 0].imshow(img_gray)
+        ax[0, 1].set_title('Blocks binarization')
+        ax[0, 1].imshow(binary)
+        ax[0, 2].set_title('Reconstructed and eroded')
+        ax[0, 2].imshow(cleared_binary)
+        ax[0, 3].set_title('Markers')
+        ax[0, 3].imshow(markers)
+        ax[0, 4].set_title('Distances')
+        ax[0, 4].imshow(distances)
+        ax[1, 0].set_title('Distances reversed')
+        ax[1, 0].imshow(-distances)
+        ax[1, 1].set_title('Labels')
+        ax[1, 1].imshow(labels)
+        ax[1, 2].set_title('Image label')
+        ax[1, 2].imshow(img_label)
+        ax[1, 3].set_title('Before region filtering')
+        ax[1, 4].set_title('After region filtering')
 
-        if plot:
-            fig, ax = plt.subplots(nrows=2, ncols=5, figsize=(40, 20))
-            plt.suptitle(self.file_name, fontsize=16)
+    rs = ip.region_sorter(img_label, filename)
 
-            ax[0, 0].set_title('Grayscale')
-            ax[0, 0].imshow(img_gray)
-            ax[0, 1].set_title('Blocks binarization')
-            ax[0, 1].imshow(binary)
-            ax[0, 2].set_title('Reconstructed and eroded')
-            ax[0, 2].imshow(cleared_binary)
-            ax[0, 3].set_title('Markers')
-            ax[0, 3].imshow(markers)
-            ax[0, 4].set_title('Distances')
-            ax[0, 4].imshow(distances)
-            ax[1, 0].set_title('Distances reversed')
-            ax[1, 0].imshow(-distances)
-            ax[1, 1].set_title('Labels')
-            ax[1, 1].imshow(labels)
-            ax[1, 2].set_title('Image label')
-            ax[1, 2].imshow(img_label)
-            ax[1, 3].set_title('Before region filtering')
-            ax[1, 4].set_title('After region filtering')
+    rs.filter_area()
+    rs.filter_weird_shapes()
 
-        rs = ip.region_sorter(img_label, self.file_name)
-        print(rs.labels)
+    if plot:
+        rs.plot(ax[1, 3], img_gray)
 
-        rs.filter_area()
-        rs.filter_weird_shapes()
+    rs.update_img_label()
+    rs.find_neighbors()
+    rs.filter_neighbors()
 
-        if plot:
-            rs.plot(img_gray, ax[1, 3])
+    rs.compute_eccentricities()
+    rs.find_central_cell()
 
-        rs.update_img_label()
-        rs.find_neighbors()
-        rs.filter_neighbors()
+    rs.compute_angles()
+    rs.filter_angles()
 
-        rs.compute_eccentricities()
-        rs.find_central_cell()
+    rs.filter_annoying_cell()
+    # rs.update_center()
 
-        rs.compute_angles()
-        rs.filter_angles()
+    rs.identify_regions()
+    rs.compute_fd(n_descriptors)
 
-        rs.filter_annoying_cell()
-        # rs.update_center()
+    if plot:
+        rs.plot(ax[1, 4], img_gray)
+        if rs.valid_image:
+            path_plot = os.path.join(parent_folder, 'valid_images', filename)
+        else:
+            path_plot = os.path.join(parent_folder, 'invalid_images', filename)
+        plt.savefig(path_plot)
+        plt.close()
 
-        rs.identify_regions()
-        rs.compute_fd(n_descriptors)
+    csv_name, output = rs.extract_features()
 
-        if plot:
-            rs.plot(img_gray, ax[1, 4])
-            if rs.valid_image:
-                path_figure = folder_path + 'valid_images/'
-            else:
-                path_figure = folder_path + 'invalid_images/'
-            plt.savefig(path_figure + self.file_name)
-            plt.close()
-
-        csv_name, output = rs.extract_features()
-
-        return csv_name, output
+    return csv_name, output
 
 
-def extract_pictures(folder_path, paths_images, plot, n_descriptors,
-                     continue_csv):
+def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
     """Extract features from pictures satisfying some criteria:
     We only keep pictures of bees having at least <min_images> per <category>
 
     Arguments
     ---------
-    folder_path : str
-        path of the prediction or training folder
     path_images : str
-        Input raw images folder path
-    category : str
-        level of classification, must be 'genus' or 'species'
-    min_images : int (default 20)
-        min number of image per category
+        Input raw images folder path of images to process
     plot : bool
         if true, explanatory figures will be plotted
         in 'method_feature_extraction/explanatory_figures/'
@@ -146,62 +124,45 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors,
         if true, continue extracting process from already existing csv_files
         if false, erase all csv_files and restart from scratch
     """
+    parent_folder = paths_images[0].split('/')[-3]
+    path_valid_images = os.path.join(parent_folder, 'valid_images')
+    path_invalid_images = os.path.join(parent_folder, 'invalid_images')
+
+    path_6cells_csv = os.path.join(parent_folder, 'data_6cells.csv')
+    path_7cells_csv = os.path.join(parent_folder, 'data_7cells.csv')
+    path_invalid_csv = os.path.join(parent_folder, 'invalid.csv')
+
+    if plot:
+        os.makedirs(path_valid_images, exist_ok=True)
+        os.makedirs(path_invalid_images, exist_ok=True)
+
     already_extracted = []
 
     if continue_csv:
         try:
-            if not os.path.exists(folder_path + "data_6cells.csv"):
-                print("data_6cells.csv not found")
-                return 0
-            if not os.path.exists(folder_path + "data_7cells.csv"):
-                print("data_7cells.csv not found")
-                return 0
-            if plot:
-                if not os.path.exists(folder_path + 'valid_images/'):
-                    os.makedirs(folder_path + 'valid_images/')
-                if not os.path.exists(folder_path + 'invalid_images/'):
-                    os.makedirs(folder_path + 'invalid_images/')
+            paths_csv = [path_6cells_csv, path_7cells_csv, path_invalid_csv]
+            for path_csv in paths_csv:
+                dataset = pd.read_csv(path_csv)
+                names = dataset.iloc[:, 0].values
+                already_extracted += list(names)
+            already_extracted = sorted(already_extracted)
 
         except OSError:
-            print('Error: Finding directories')
-
-        for csv_name in ['data_6cells.csv', 'data_7cells.csv', 'invalid.csv']:
-            dataset = pd.read_csv(folder_path + csv_name)
-            names = dataset.iloc[:, 0].values
-            already_extracted += list(names)
-        already_extracted = sorted(already_extracted)
+            print('Error: ciyld not find csv files')
 
     else:
-        try:
-            if os.path.exists(folder_path + "data_6cells.csv"):
-                os.remove(folder_path + "data_6cells.csv")
-            if os.path.exists(folder_path + "data_7cells.csv"):
-                os.remove(folder_path + "data_7cells.csv")
-            if os.path.exists(folder_path + "invalid.csv"):
-                os.remove(folder_path + "invalid.csv")
-            if plot:
-                if os.path.exists(folder_path + 'valid_images/'):
-                    rmtree(folder_path + 'valid_images/')
-                os.makedirs(folder_path + 'valid_images/')
-                if os.path.exists(folder_path + 'invalid_images/'):
-                    rmtree(folder_path + 'invalid_images/')
-                os.makedirs(folder_path + 'invalid_images/')
-
-        except OSError:
-            print('Error: Creating directories ')
-
         # Creating the csv files and headers
         cells_ordered = ['marg', '1st_med', '2nd_med', '2nd_cub', '1st_sub',
                          '2nd_sub', '3rd_sub']
 
         # initializing invalid images
-        with open(folder_path + 'invalid.csv', 'a') as csv_file:
+        with open(path_invalid_csv, 'w') as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow(['names'])
 
         # initializing other csv files
-        for csv_name in ['data_6cells.csv', 'data_7cells.csv']:
-            if csv_name == 'data_6cells.csv':
+        for i, path_csv in enumerate([path_6cells_csv, path_7cells_csv]):
+            if i == 0:
                 relevant_cells = cells_ordered[:-1]
             else:
                 relevant_cells = cells_ordered
@@ -218,7 +179,7 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors,
                     header += [cell + '_fd' + str(i)]
 
             # Writing header to csv
-            with open(folder_path + csv_name, 'a') as csv_file:
+            with open(path_csv, 'w') as csv_file:
                 writer = csv.writer(csv_file)
                 writer.writerow(header)
 
@@ -226,6 +187,7 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors,
 
     # Process and extract features for each image
     for i, path in enumerate(paths_images):
+
         print(f'### Image {i+1}/{n}')
         name_image = path.split('/')[-1]
         print(f'# Image name : {name_image}')
@@ -233,21 +195,18 @@ def extract_pictures(folder_path, paths_images, plot, n_descriptors,
         if name_image in already_extracted:
             print('# Already extracted')
         else:
-            photo = wing_photo(path)
-            nb_cells, output = photo.process_and_extract(plot,
-                                                         n_descriptors,
-                                                         folder_path)
+            nb_cells, output = process_and_extract(path, plot, n_descriptors)
             if not nb_cells:  # if the image is not valid
                 print('# Invalid image')
-                with open(folder_path + 'invalid.csv', 'a') as csv_file:
+                with open(path_invalid_csv, 'a') as csv_file:
                     writer = csv.writer(csv_file)
                     writer.writerow([name_image])
             else:
                 print('# Valid image')
                 if nb_cells == 6:
-                    csv_name = 'data_6cells.csv'
+                    path_csv = path_6cells_csv
                 else:
-                    csv_name = 'data_7cells.csv'
-                with open(folder_path + csv_name, 'a') as csv_file:
+                    path_csv = path_7cells_csv
+                with open(path_csv, 'a') as csv_file:
                     writer = csv.writer(csv_file)
                     writer.writerow(output)

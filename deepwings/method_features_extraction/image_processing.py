@@ -80,6 +80,7 @@ def block_binarization(image, step=20, side_block=100):
     binary : 2D array
         block binarized image
     """
+    t = time.time()
 
     total = sub_block_binarization(image, block_size=(side_block, side_block),
                                    offset=0)
@@ -90,6 +91,9 @@ def block_binarization(image, step=20, side_block=100):
                                         offset=offset)
         offset += step
     thresh = threshold_otsu(total, nbins=60)
+
+    duration = round(time.time() - t, 4)
+    print(f'# Block binarization lasted {duration}s')
 
     return total > thresh
 
@@ -648,10 +652,8 @@ class region_sorter():
         self.update_img_label()
 
         # print('mixing images')
-        if img_gray:
-            background = label2rgb(self.img_label,
-                                   image=img_gray,
-                                   bg_label=0)
+        if img_gray is not None:
+            background = label2rgb(self.img_label, image=img_gray, bg_label=0)
         else:
             background = self.img_label
 
