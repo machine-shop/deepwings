@@ -15,3 +15,6 @@ notes.txt
 **/*.csv
 **/*.pyc
 .ropeproject
+*.log
+*.aux
+*.bbl
