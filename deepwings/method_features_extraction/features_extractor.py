@@ -5,7 +5,7 @@ from scipy import ndimage as ndi
 from skimage.io import imread
 from skimage.color import rgb2gray
 
-from method_features_extraction import image_processing as ip
+from deepwings.method_features_extraction import image_processing as ip
 import matplotlib.pyplot as plt
 
 
@@ -128,10 +128,11 @@ def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
     path_valid_images = os.path.join(parent_folder, 'valid_images')
     path_invalid_images = os.path.join(parent_folder, 'invalid_images')
 
-    path_6cells_csv = os.path.join(parent_folder, 'data_6cells.csv')
-    path_7cells_csv = os.path.join(parent_folder, 'data_7cells.csv')
+    # path_6cells_csv = os.path.join(parent_folder, 'data_6cells.csv')
+    # path_7cells_csv = os.path.join(parent_folder, 'data_7cells.csv')
     path_invalid_csv = os.path.join(parent_folder, 'invalid.csv')
     path_valid_csv = os.path.join(parent_folder, 'valid.csv')
+    print(f"Writing results to {path_valid_csv} and {path_invalid_csv}")
 
     if plot:
         os.makedirs(path_valid_images, exist_ok=True)
@@ -141,7 +142,7 @@ def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
 
     if continue_csv:
         try:
-            paths_csv = [path_6cells_csv, path_7cells_csv, path_invalid_csv]
+            paths_csv = [path_valid_csv, path_invalid_csv]
             for path_csv in paths_csv:
                 dataset = pd.read_csv(path_csv)
                 names = dataset.iloc[:, 0].values
@@ -201,3 +202,4 @@ def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
                 with open(path_valid_csv, 'a') as csv_file:
                     writer = csv.writer(csv_file)
                     writer.writerow(output)
+    print(f'\nResults in {path_valid_csv} and {path_invalid_csv}')

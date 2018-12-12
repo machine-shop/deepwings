@@ -5,7 +5,7 @@ import pytest
 from skimage.measure import regionprops
 from skimage.transform import rotate
 
-from method_features_extraction import image_processing as ip
+from deepwings.method_features_extraction import image_processing as ip
 
 
 @pytest.fixture(scope="module")

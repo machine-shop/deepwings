@@ -5,6 +5,7 @@ from keras.models import load_model
 import numpy as np
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler, Imputer
 from sklearn.externals import joblib
 
@@ -83,7 +84,7 @@ def ANN_classifier(input_dim, output_dim):
     return classifier
 
 
-def train(category, test_size=0.2):
+def train(category, test_size=0.2, n_epochs=300):
     if not 0 < test_size < 1:
         print('ERROR : test_size must be in ]0, 1[')
         print('To specify test_size : $ python pipeline -t ann -ts 0.3')
@@ -109,22 +110,40 @@ def train(category, test_size=0.2):
     classifier.compile(optimizer='adam', loss='categorical_crossentropy',
                        metrics=['accuracy'])
 
-    history = classifier.fit(X, Y, batch_size=40, nb_epoch=300,
+    history = classifier.fit(X, Y, batch_size=40, nb_epoch=n_epochs,
                              validation_split=test_size, shuffle=True)
-    print(test_size)
-    print(history.history.keys())
     acc = history.history['acc']
     val_acc = history.history['val_acc']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
     train_accuracy = round(np.mean(acc[-20:]), 4)
     test_accuracy = round(np.mean(val_acc[-20:]), 4)
-
-    prefix = 'method_features_extraction/classifiers/models_ann/'
-    path_model = os.path.join(prefix, f'{category}_ann.h5')
-    classifier.save(path_model)
-
+    epochs = np.arange(n_epochs)
     print('test_size : ', test_size)
+    print('Mean accuracies on last 20 epochs:')
     print('train_accuracy : ', train_accuracy)
     print('test_accuracy : ', test_accuracy)
+
+    prefix = 'deepwings/method_features_extraction/models/'
+    path_model = os.path.join(prefix, f'{category}_ann.h5')
+    classifier.save(path_model)
+    print(f'Model saved to {path_model}')
+
+    fig, ax = plt.subplots(ncols=2, figsize=(20, 10))
+    ax[0].plot(epochs, acc, label='train')
+    ax[0].plot(epochs, val_acc, label='test')
+    ax[0].set_xlabel('Epochs')
+    ax[0].set_ylabel('Accuracy')
+    ax[1].plot(epochs, loss, label='train')
+    ax[1].plot(epochs, val_loss, label='test')
+    ax[1].set_xlabel('Epochs')
+    ax[1].set_ylabel('Loss')
+    fig.suptitle(f'{category}_ann.h5')
+
+    path_fig = os.path.join(prefix, f'{category}_ann.png')
+    fig.savefig(path_fig, dpi=fig.dpi)
+    print(f'Figure saved to {path_fig}')
 
 
 def predict(category, plot, n_descriptors, nb_pred=3):
@@ -161,7 +180,7 @@ def predict(category, plot, n_descriptors, nb_pred=3):
     scaler = joblib.load(path_scaler)
     X = scaler.transform(X)
 
-    prefix = 'method_features_extraction/classifiers/models_ann/'
+    prefix = 'deepwings/method_features_extraction/models/'
     path_model = os.path.join(prefix, f'{category}_ann.h5')
     classifier = load_model(path_model)
 
@@ -200,4 +219,4 @@ def predict(category, plot, n_descriptors, nb_pred=3):
             writer.writerow(row)
 
     print('Prediction successful, results in '
-          'deepwings/prediction/prediction_ann.csv')
+          'prediction/prediction_ann.csv')

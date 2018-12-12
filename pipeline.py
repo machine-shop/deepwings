@@ -1,11 +1,11 @@
 import argparse
-import utils
 import os
 
-import method_cnn.cnn_prediction as cnnp
+import deepwings.utils as utils
+import deepwings.method_cnn.cnn_prediction as cnnp
 # import method_cnn.cnn_training as cnnt
-from method_features_extraction.classifiers import ann_classifier as annc
-from method_features_extraction import features_extractor as fe
+from deepwings.method_features_extraction import ann_classifier as annc
+from deepwings.method_features_extraction import features_extractor as fe
 
 
 """

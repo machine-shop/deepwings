@@ -61,7 +61,8 @@ On the other side, those types of images should be avoided :
 
 
 ### Predicting
-This project comes with pretrained models for both the CNN and ANN methods. Move the pictures you want to predict to */deepwings/prediction/raw_images/test/*. Then run:
+This project comes with pretrained models for both the CNN and ANN methods.
+Move the pictures you want to predict to *prediction/raw_images/*. Then run:
 
 #### CNN
 This method is preferred as it is faster and slightly more accurate. To predict species of your images, run :
@@ -82,10 +83,10 @@ Optional arguments :
 ```
 $ python pipeline.py -e pred -pred ann --plot --category genus
 ```
-* *--plot, -p* : if specified, explanatory figures will be plotted in */deepwings/prediction/explanatory_figures/* 
+* *--plot, -p* : if specified, explanatory figures will be plotted in *prediction/valid_images/* and *prediction/invalid_images/*
 * *--category, -c* : 'genus' or 'species'(default). Specifies if the model must be a genus or species classifier.
 
-The prediction results should appear in a csv file in */deepwings/prediction/*.
+The prediction results should appear in a csv file in *prediction/prediction_ann.csv*.
 
 
 ### Training
@@ -99,14 +100,13 @@ In addition, you may add the following information (optional) : the subspecies o
 
 Example : *30 Lasioglossum rohweri f left 4x bx.jpg* or *1239 Osmia lignaria propinqua f right 4x.jpg*
 #### 2. Features extraction
-Move all your raw images to */deepwings/training/raw_images/*. Then run:
+Move all your raw images to *training/raw_images/*. Then run:
 ```
 $ python pipeline.py -e train -restart
 ```
 This process can last a few hours depending on the size of your dataset.
 This will create several spreadsheets :
-* *data_6cells.csv* : Features of images with no 3rd submarginal cell detected
-* *data_7cells.csv* : Features of images with 3rd submarginal cell detected
+* *valid.csv* : Features of valid images 
 * *invalid.csv* : List of images whose features could not be properly extracted
 
 If this process gets interrupted at some point, you can pick up extraction where you left off with:
@@ -118,14 +118,14 @@ Optional arguments :
 $ python pipeline.py -e train --plot --n_fourier_descriptors 25
 ```
 * *--n_fourier_descriptors, -fd* : number of fourier descriptors extracted for each cell detected (15 by default) 
-* *--plot, -p* : if specified, explanatory figures will be plotted in */deepwings/training/explanatory_figures/* 
+* *--plot, -p* : if specified, explanatory figures will be plotted in *training/valid_images/* and *training/invalid_images/*
 
 #### 3. Artificial Neural Network
 This is a very basic ANN, any other classifier could be used for this task. Once the features are extracted, you can run:
 ``` 
 $ python pipeline.py -t ann 
 ```
-This will update the models in */deepwings/method_features_extraction/classifiers/models_ann/*.
+This will update the models in */deepwings/method_features_extraction/models/[category]_ann.h5*.
 
 You can add a few optional arguments:
 ```
@@ -133,6 +133,4 @@ $ python pipeline.py -t ann --category genus --min_images 5 --test-size 0.3
 ```
 * *--category, -c* : 'genus' or 'species'(default). Specifies if the model must be a genus or species classifier.
 * *--min_images, -m* : minimum number of images needed for a category (genus/species) to be taken into account
-* *--test-size, -ts* : number between 0 and 1, specifying the ratio *#test/#total* (0.2 by default)
-
-
+* *--test-size, -ts* : number between 0 and 1, specifying the ratio *#test/#total* (0 by default)
