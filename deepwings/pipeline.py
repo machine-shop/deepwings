@@ -128,7 +128,7 @@ def main():
                                 n_descriptors=args.n_fourier_descriptors,
                                 continue_csv=False)
         elif step == 'train_ann':
-            annc.train(category=args.category)
+            annc.train(category=args.category, test_size=args.test_size)
         # In progresss :
         # elif step == 'train_cnn':
             # model = cnnt.build_model()

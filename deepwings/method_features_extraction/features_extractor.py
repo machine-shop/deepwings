@@ -102,9 +102,9 @@ def process_and_extract(path_raw_image, plot=False, n_descriptors=15):
         plt.savefig(path_plot)
         plt.close()
 
-    csv_name, output = rs.extract_features()
+    nb_cells, output = rs.extract_features()
 
-    return csv_name, output
+    return nb_cells, output
 
 
 def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
@@ -131,6 +131,7 @@ def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
     path_6cells_csv = os.path.join(parent_folder, 'data_6cells.csv')
     path_7cells_csv = os.path.join(parent_folder, 'data_7cells.csv')
     path_invalid_csv = os.path.join(parent_folder, 'invalid.csv')
+    path_valid_csv = os.path.join(parent_folder, 'valid.csv')
 
     if plot:
         os.makedirs(path_valid_images, exist_ok=True)
@@ -148,40 +149,34 @@ def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
             already_extracted = sorted(already_extracted)
 
         except OSError:
-            print('Error: ciyld not find csv files')
+            print('Error: could not find csv files')
 
     else:
         # Creating the csv files and headers
         cells_ordered = ['marg', '1st_med', '2nd_med', '2nd_cub', '1st_sub',
                          '2nd_sub', '3rd_sub']
 
-        # initializing invalid images
+        # initializing invalid.csv
         with open(path_invalid_csv, 'w') as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow(['names'])
 
-        # initializing other csv files
-        for i, path_csv in enumerate([path_6cells_csv, path_7cells_csv]):
-            if i == 0:
-                relevant_cells = cells_ordered[:-1]
-            else:
-                relevant_cells = cells_ordered
+        # initializing valid.csv
+        # Headers
+        header = ['names']
+        header += (
+            [cell+'_area' for cell in cells_ordered] +
+            [cell+'_ecc' for cell in cells_ordered] +
+            [cell+'_ang' for cell in cells_ordered if cell != '1st_med'])
 
-            # Headers
-            header = ['names']
-            header += (
-                [cell+'_area' for cell in relevant_cells[:-1]] +
-                [cell+'_ecc' for cell in relevant_cells] +
-                [cell+'_ang' for cell in relevant_cells if cell != '1st_med'])
+        for cell in cells_ordered:
+            for i in range(2, n_descriptors + 2):
+                header += [cell + '_fd' + str(i)]
 
-            for cell in relevant_cells:
-                for i in range(2, n_descriptors + 2):
-                    header += [cell + '_fd' + str(i)]
-
-            # Writing header to csv
-            with open(path_csv, 'w') as csv_file:
-                writer = csv.writer(csv_file)
-                writer.writerow(header)
+        # Writing header to csv
+        with open(path_valid_csv, 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerow(header)
 
     n = len(paths_images)
 
@@ -203,10 +198,6 @@ def extract_pictures(paths_images, plot, n_descriptors, continue_csv):
                     writer.writerow([name_image])
             else:
                 print('# Valid image')
-                if nb_cells == 6:
-                    path_csv = path_6cells_csv
-                else:
-                    path_csv = path_7cells_csv
-                with open(path_csv, 'a') as csv_file:
+                with open(path_valid_csv, 'a') as csv_file:
                     writer = csv.writer(csv_file)
                     writer.writerow(output)

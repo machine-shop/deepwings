@@ -26,8 +26,8 @@ from sklearn.externals import joblib
 # sericeus texana	texanus	virescens zephyrum zonulum
 
 
-def create_csv(folder_path, category, nb_cells):
-    csv_name = folder_path + 'data_' + str(nb_cells) + 'cells.csv'
+def create_csv(parent_folder, category):
+    csv_name = os.path.join(parent_folder, 'valid.csv')
     dataset = pd.read_csv(csv_name)
     # shuffle rows
     dataset = dataset.sample(frac=1).reset_index(drop=True)
@@ -49,17 +49,14 @@ def create_csv(folder_path, category, nb_cells):
             category_list.append(category_name)
     category_list = sorted(category_list)
 
-    new_csv_name = folder_path + category + '_' + csv_name.split('/')[-1]
+    new_csv_name = os.path.join(parent_folder, f'valid_encoded_{category}.csv')
 
-    if os.path.exists(new_csv_name):
-        os.remove(new_csv_name)
-
-    with open(new_csv_name, 'a') as new_csv_file:
+    with open(new_csv_name, 'w') as new_csv_file:
         writer = csv.writer(new_csv_file)
         first_row = list(dataset) + category_list
         writer.writerow(first_row)
         for row in data:
-            zeros = np.zeros((len(category_list,)))
+            zeros = np.zeros(len(category_list))
             if category == 'genus':
                 category_name = row[0].split(' ')[1].lower()
             elif category == 'species':
@@ -79,133 +76,128 @@ def ANN_classifier(input_dim, output_dim):
     classifier = Sequential()
     classifier.add(Dense(output_dim=input_dim, init='uniform',
                          activation='relu', input_dim=input_dim))
-    classifier.add(Dropout(p=0.55))  # avoiding overfitting
+    classifier.add(Dropout(p=0.7))  # avoiding overfitting
     classifier.add(Dense(output_dim=output_dim, init='uniform',
                          activation='softmax'))
 
     return classifier
 
 
-def train(category):
-    train_accuracies = []
-    test_accuracies = []
-    for nb_cells in [6, 7]:
-        csv_name, nb_categories = create_csv('training/', category, nb_cells)
-        print(csv_name)
-        dataset = pd.read_csv(csv_name)
-        data = dataset.iloc[:, :].values
-        X = data[:, 1:-nb_categories]
-        # remove last column for Dummy variables trap
-        Y = data[:, -nb_categories:]
+def train(category, test_size=0.2):
+    if not 0 < test_size < 1:
+        print('ERROR : test_size must be in ]0, 1[')
+        print('To specify test_size : $ python pipeline -t ann -ts 0.3')
+        return
 
-        # Splitting the data
-        # X_train, X_test, Y_train, Y_test = train_test_split(X, Y,
-        # test_size=0.2, random_state=0)
+    csv_name, nb_categories = create_csv('training', category)
+    print(csv_name)
+    dataset = pd.read_csv(csv_name)
+    data = dataset.iloc[:, :].values
+    X = data[:, 1:-nb_categories]
+    Y = data[:, -nb_categories:]
 
-        # Feature scaling : calculations
-        scaler = StandardScaler()
-        X = scaler.fit_transform(X)
-        scaler_name = 'training/scaler_'+str(nb_cells) + 'cells.save'
-        joblib.dump(scaler, scaler_name)
+    # Feature scaling : calculations
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+    scaler_name = 'training/scaler.save'
+    joblib.dump(scaler, scaler_name)
 
-        classifier = ANN_classifier(input_dim=X.shape[1],
-                                    output_dim=Y.shape[1])
+    classifier = ANN_classifier(input_dim=X.shape[1],
+                                output_dim=Y.shape[1])
 
-        # compiling the ANN
-        classifier.compile(optimizer='adam', loss='categorical_crossentropy',
-                           metrics=['accuracy'])
+    # compiling the ANN
+    classifier.compile(optimizer='adam', loss='categorical_crossentropy',
+                       metrics=['accuracy'])
 
-        history = classifier.fit(X, Y, batch_size=40, nb_epoch=300,
-                                 validation_split=0.2, shuffle=True)
+    history = classifier.fit(X, Y, batch_size=40, nb_epoch=300,
+                             validation_split=test_size, shuffle=True)
+    print(test_size)
+    print(history.history.keys())
+    acc = history.history['acc']
+    val_acc = history.history['val_acc']
+    train_accuracy = round(np.mean(acc[-20:]), 4)
+    test_accuracy = round(np.mean(val_acc[-20:]), 4)
 
-        acc = history.history['acc']
-        val_acc = history.history['val_acc']
-        # loss = history.history['loss']
-        # val_loss = history.history['val_loss']
-        train_accuracies.append(round(np.mean(acc[-20:]), 4))
-        test_accuracies.append(round(np.mean(val_acc[-20:]), 4))
+    prefix = 'method_features_extraction/classifiers/models_ann/'
+    path_model = os.path.join(prefix, f'{category}_ann.h5')
+    classifier.save(path_model)
 
-        prefix = 'method_features_extraction/classifiers/models_ann/'
-        classifier.save(prefix + category + '_' + str(nb_cells) +
-                        'cells_ann_model.h5')
-
-    print('train_accuracy_6cells : ', train_accuracies[0])
-    print('test_accuracy_6cells : ', test_accuracies[0])
-    print('train_accuracy_7cells : ', train_accuracies[1])
-    print('test_accuracy_7cells : ', test_accuracies[1])
+    print('test_size : ', test_size)
+    print('train_accuracy : ', train_accuracy)
+    print('test_accuracy : ', test_accuracy)
 
 
 def predict(category, plot, n_descriptors, nb_pred=3):
-    bool_6cells = os.path.exists('prediction/data_6cells.csv')
-    bool_7cells = os.path.exists('prediction/data_7cells.csv')
-    bool_inv = os.path.exists('prediction/invalid.csv')
+    exist_csv_valid = os.path.exists('prediction/valid.csv')
+    exist_csv_invalid = os.path.exists('prediction/invalid.csv')
 
-    if not (bool_6cells or bool_7cells or bool_inv):
+    if not (exist_csv_valid and exist_csv_invalid):
         print('ERROR: no CSV files found, try extracting features before\
               predicting')
+        return 1
 
-        return 0
+    csv_valid_pred = 'prediction/valid.csv'
+    path_scaler = 'training/scaler.save'
+    path_encoded_csv = f'training/valid_encoded_{category}.csv'
+    path_prediction = 'prediction/prediction_ann.csv'
 
-    if os.path.exists('prediction/prediction_ann.csv'):
-        os.remove('prediction/prediction_ann.csv')
+    if not os.path.exists(path_scaler):
+        print(f'{path_scaler} not found')
+        print('Try training before predicting: python pipeline.py -t ann')
+        return 1
 
-    for nb_cells in [6, 7]:
-        csv_name = 'prediction/data_' + str(nb_cells) + 'cells.csv'
-        scaler_name = 'training/scaler_'+str(nb_cells) + 'cells.save'
-        processed_csv = ('training/' + category + '_data_' + str(nb_cells) +
-                         'cells.csv')
-        if not os.path.exists(scaler_name):
-            print(scaler_name + ' not found')
-            print('Try training before predicting: python pipeline.py -t ann')
+    # if not os.path.exists(processed_csv):
+        # print(processed_csv + ' not found')
+        # print('Try training before predicting: python pipeline.py -t ann')
+        # break
+
+    if not os.path.exists(csv_valid_pred):
+        print(f'{csv_valid_pred} not found')
+        return 1
+
+    dataset = pd.read_csv(csv_valid_pred)
+    data = dataset.iloc[:, :].values
+    X = data[:, 1:]
+    scaler = joblib.load(path_scaler)
+    X = scaler.transform(X)
+
+    prefix = 'method_features_extraction/classifiers/models_ann/'
+    path_model = os.path.join(prefix, f'{category}_ann.h5')
+    classifier = load_model(path_model)
+
+    y = classifier.predict(X)
+
+    # Finding the names of the classes
+    encoded_csv = pd.read_csv(path_encoded_csv)
+    columns = encoded_csv.columns
+    cells_names = ['marg', '1st_med', '2nd_med', '2nd_cub',
+                   '1st_sub', '2nd_sub', '3rd_sub']
+    category_names = []
+    for i, header in enumerate(columns[1:]):
+        last_feature = True
+        for name in cells_names:
+            if name in header:
+                last_feature = False
+        if last_feature:
+            category_names = columns[i+1:]
             break
 
-        if not os.path.exists(processed_csv):
-            print(processed_csv + ' not found')
-            print('Try training before predicting: python pipeline.py -t ann')
-            break
+    with open(path_prediction, 'w') as csv_file:
+        writer = csv.writer(csv_file)
 
-        if not os.path.exists(csv_name):
-            print(csv_name + ' not found')
-            continue
+        # Header
+        columns_pred = ['image_names']
+        for i in range(1, nb_pred + 1):
+            columns_pred += [f'prediction_{i}', f'score_{i}']
+        writer.writerow(columns_pred)
 
-        dataset = pd.read_csv(csv_name)
-        data = dataset.iloc[:, :].values
-        X = data[:, 1:]
-        scaler = joblib.load(scaler_name)
-        X = scaler.transform(X)
-        prefix = 'method_features_extraction/classifiers/models_ann/'
-        classifier = load_model(prefix + category + '_' + str(nb_cells) +
-                                'cells_ann_model.h5')
-        y = classifier.predict(X)
-        processed_dataset = pd.read_csv(processed_csv)
-        columns = processed_dataset.columns
-        cells_names = ['marg', '1st_med', '2nd_med', '2nd_cub',
-                       '1st_sub', '2nd_sub', '3rd_sub']
-        category_names = []
-        for i, header in enumerate(columns[1:]):
-            last_feature = True
-            for name in cells_names:
-                if name in header:
-                    last_feature = False
-            if last_feature:
-                category_names = columns[i+1:]
-                break
-
-        with open('prediction/prediction_ann.csv', 'a') as csv_file:
-            writer = csv.writer(csv_file)
-            if nb_cells == 6:
-                columns_pred = ['image_names']
-                for i in range(1, nb_pred + 1):
-                    columns_pred += ['prediction_' + str(i), 'score_' + str(i)]
-                writer.writerow(columns_pred)
-
-            for i, pred in enumerate(y):
-                row = [data[i, 0]]
-                for i in range(nb_pred):
-                    idx_max = np.argmax(pred)
-                    row += [category_names[idx_max], round(pred[idx_max], 4)]
-                    pred[idx_max] = 0
-                writer.writerow(row)
+        for i, pred in enumerate(y):
+            row = [data[i, 0]]
+            for i in range(nb_pred):
+                idx_max = np.argmax(pred)
+                row += [category_names[idx_max], round(pred[idx_max], 4)]
+                pred[idx_max] = 0
+            writer.writerow(row)
 
     print('Prediction successful, results in '
           'deepwings/prediction/prediction_ann.csv')
