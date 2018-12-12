@@ -577,7 +577,7 @@ class region_sorter():
         print(f'# Filter angles lasted {duration}s')
 
     def filter_annoying_cell(self):
-        """ Sometimes, we have more than 2 cells not neighbors with central cell
+        """Sometimes, we have more than 2 cells not neighbors with central cell
         We want to discard those with biggest angles.
         """
 
@@ -777,8 +777,17 @@ class region_sorter():
                 if self.angles[idx] != 0:
                     angles += [self.angles[idx]]
 
-            output += (area[:-1] + eccentricity + angles + fourier_descriptors)
+            # Filling 3rd_sub cell if only 6 cells detected
+            fill = -999
+            if nb_cells == 6:
+                area += [fill]
+                eccentricity += [fill]
+                angles += [fill]
+                fourier_descriptors += [fill]*len(self.fd[0])
 
+            output += (area + eccentricity + angles + fourier_descriptors)
+
+            # Unused feature : ratio between centroids distances
             if compute_ratios:
                 comb_cells = combinations(cells_ordered, 2)
                 distances = []
