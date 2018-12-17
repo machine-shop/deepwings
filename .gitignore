@@ -12,6 +12,8 @@ notes.txt
 *.csv#
 *.pyc
 **/.ropeproject
+**/prediction_cnn.p
+**/info_train_test.p
 *.log
 *.aux
 *.bbl

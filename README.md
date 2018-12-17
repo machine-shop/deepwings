@@ -20,7 +20,7 @@ Rather than capturing, killing, and sending the bees off to be catalogued, imagi
 ## Improvements
 
 This time, we propose two methods : 
-* A Convolutional Neural Network approach implementing the VGG16 pretrained network
+* A Convolutional Neural Network approach using DenseNet121
 * A classical pipeline with features extraction followed by an artificial Artificial Neural Network classifier
 
 ## Getting Started
@@ -41,7 +41,7 @@ To download the project :
 ```
 $ git clone https://github.com/machine-shop/deepwings
 $ cd deepwings
-$ python install.py
+$ pip install -r requirements.txt
 ```
 
 ## Usage
@@ -90,17 +90,59 @@ The prediction results should appear in a csv file in *prediction/prediction_ann
 
 
 ### Training
-Training is only available with the features extraction model.
-But you can tune the CNN model as you wish : */deepwings/method_cnn/models/VGG16_2nd_method_dataug_110epft20ep.h5* 
 
+Move all your raw images to *training/raw_images/*. Then run:
 The dataset used in this project is available [here](https://www.dropbox.com/sh/r04kyryo6ljs6x0/AAAhAU4XKVJzuRyrroYLVdnua?dl=0)
+
 #### 1. Filename convention
 The name of each image is composed of an unique identification number (per bee), the genus of the bee, the species of the bee.
 In addition, you may add the following information (optional) : the subspecies of the bee, whether the right or left wing was used, the gender of the bee, and finally the magnification of the stereoscope with each value separated by a space.     
 
 Example : *30 Lasioglossum rohweri f left 4x bx.jpg* or *1239 Osmia lignaria propinqua f right 4x.jpg*
-#### 2. Features extraction
-Move all your raw images to *training/raw_images/*. Then run:
+
+#### 2 Building the dataset
+
+
+``` 
+$ python pipeline.py -s 
+```
+This will sort the images and build the training/test datasets. You can add a few optional arguments:
+```
+$ python pipeline.py -s --category genus --min_images 5 --test-size 0.25
+```
+* *--category, -c* : 'genus' or 'species'(default). Specifies if the model must be a genus or species classifier.
+* *--min_images, -m* : minimum number of images needed for a category (genus/species) to be taken into account (default 20).
+* *--test-size, -ts* : number between 0 and 1, specifying the ratio *#test/#total* (default 0.3)
+
+If you just want to see the output without changing subfolders:
+```
+$ python pipeline.py -l --category genus --min_images 5
+```
+
+
+#### 3 Train DenseNet121
+It's strongly advised to run this with a GPU:
+
+```
+$ python pipeline.py --train cnn
+```
+You can add a few optional arguments:
+```
+$ python pipeline.py --train cnn --n_epochs 30 
+```
+* *--n_epochs* : Number of epochs used for training (default 20).
+* *--batch_size_train, -bs_train* : Batch size used for CNN training (default 20). 
+* *--batch_size_test, -bs_test* : Batch size used for CNN validation (default 20). 
+* *--steps_epoch* : Number of steps per epoch (default 100).
+
+This command will train a new model to *training/models/cnn/[model_name]/*. It will also plot the accuracies and losses according to the epoch. 
+
+To use this model :
+```
+$ python pipeline.py -pred cnn --name_cnn [model_name]
+```
+
+#### 4. Features extraction
 ```
 $ python pipeline.py -e train -restart
 ```
@@ -122,15 +164,15 @@ $ python pipeline.py -e train --plot --n_fourier_descriptors 25
 
 #### 3. Artificial Neural Network
 This is a very basic ANN, any other classifier could be used for this task. Once the features are extracted, you can run:
-``` 
-$ python pipeline.py -t ann 
-```
-This will update the models in */deepwings/method_features_extraction/models/[category]_ann.h5*.
 
-You can add a few optional arguments:
+Then you can proceed to train :
 ```
-$ python pipeline.py -t ann --category genus --min_images 5 --test-size 0.3
+$ python pipeline.py -t ann [-c genus]
 ```
-* *--category, -c* : 'genus' or 'species'(default). Specifies if the model must be a genus or species classifier.
-* *--min_images, -m* : minimum number of images needed for a category (genus/species) to be taken into account
-* *--test-size, -ts* : number between 0 and 1, specifying the ratio *#test/#total* (0 by default)
+This will update the models in *training/models/ann/[category]/*.
+
+To use this model on prediction/raw_images/:
+```
+$ python pipeline.py -e pred
+$ python pipeline.py -pred ann [-c genus]
+```

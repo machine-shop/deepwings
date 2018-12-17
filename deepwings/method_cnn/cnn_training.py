@@ -1,34 +1,65 @@
-from keras.layers import Dense, Dropout, Flatten
-from keras.applications import VGG16
+from keras.layers import Dense, GlobalAveragePooling2D
+from keras.applications import DenseNet121
 from keras.models import Sequential
 from keras.preprocessing.image import ImageDataGenerator
 from keras import optimizers
+import matplotlib.pyplot as plt
+import pickle
+import datetime
+import os
 
 
-def build_model(dense_layers=4, dropout=0.5, n_class=21,
-                weights_conv='imagenet', start=300, input_shape=(150, 150, 3)):
+def build_model(base='DenseNet121', n_class=21,
+                weights_conv='imagenet', input_shape=(224, 224, 3)):
 
-    base = VGG16(weights=weights_conv, include_top=False,
-                 input_shape=input_shape)
-    model = Sequential()
-    model.add(base)
-    model.add(Flatten(input_shape=(None, 4, 4, 512)))
-    for i in range(dense_layers-1):
-        n_outputs = int(start/(2**i))
-        model.add(Dense(n_outputs, activation='relu'))
-        if dropout > 0:
-            model.add(Dropout(dropout))
-    model.add(Dense(n_class, activation='softmax'))
-    print(model.layers[0].summary())
-    print(model.summary())
+    now = datetime.datetime.now().strftime("%Y-%m-%d_%Hh%Mm%Ss")
+    model_name = f'{base}_{now}'
+
+    model = Sequential(name=model_name)
+
+    if base == 'DenseNet121':
+
+        conv = DenseNet121(input_shape=input_shape, include_top=False,
+                           weights=weights_conv)
+
+        model.add(conv)
+        model.add(GlobalAveragePooling2D())
+        model.add(Dense(n_class, activation='softmax'))
+
+    else:
+        print('Only DenseNet121 is supported for CNN')
+        return
 
     return model
 
 
 def train_model(model, path_train='training/sorted_species/train/',
                 path_test='training/sorted_species/test/',
-                target_size=(150, 150), bs_train=20, bs_test=20,
-                epochs1=1, epochs2=1, top_layers_ft=3):
+                output='training/models/cnn/',
+                bs_train=20, bs_test=20,
+                epochs=20,
+                steps_per_epoch=100):
+
+    if not os.path.exists(output):
+        print(f'ERROR : Could not find the folder {output}')
+        return
+
+    print('\nParameters :')
+    print(f'path_train : {path_train}')
+    print(f'path_test : {path_test}')
+    print(f'epochs : {epochs}')
+    print(f'Batch size train : {bs_train}')
+    print(f'Batch size test : {bs_test}')
+    print(f'steps per epoch : {steps_per_epoch}\n')
+    path_folder = os.path.join(output, model.name)
+    os.makedirs(path_folder, exist_ok=True)
+    path_model = os.path.join(path_folder, 'model.h5')
+    path_classes = os.path.join(path_folder, 'classes.p')
+    path_fig = os.path.join(path_folder, 'graph.png')
+    path_history = os.path.join(path_folder, 'history.p')
+
+    input_shape = model.layers[0].layers[0].get_config()['batch_input_shape']
+    target_size = (input_shape[1], input_shape[2])
 
     train_datagen = ImageDataGenerator(rescale=1./255,
                                        rotation_range=40,
@@ -46,65 +77,57 @@ def train_model(model, path_train='training/sorted_species/train/',
                                     target_size=target_size,
                                     batch_size=bs_train,
                                     class_mode='categorical')
+
     test_generator = test_datagen.flow_from_directory(
                                   path_test,
                                   target_size=target_size,
                                   batch_size=bs_test,
                                   class_mode='categorical')
 
-    model.layers[0].trainable = False
-    print(model.layers[0].summary())
-    print(model.summary())
+    if 'DenseNet121' in model.name:
 
-    print('Compiling ..')
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=optimizers.RMSprop(lr=2e-5),
-                  metrics=['acc'])
-    print('Model training ..')
+        model.compile(loss='categorical_crossentropy',
+                      optimizer=optimizers.SGD(lr=2e-3, momentum=0.9, decay=0),
+                      metrics=['acc'])
 
-    # history1 = model.fit_generator(train_generator,
-    # steps_per_epoch=1,
-    # epochs=epochs1,
-    # validation_data=test_generator,
-    # validation_steps=1)
+        history = model.fit_generator(train_generator,
+                                      steps_per_epoch=steps_per_epoch,
+                                      epochs=epochs,
+                                      validation_data=test_generator,
+                                      validation_steps=steps_per_epoch // 2,
+                                      shuffle=True)
 
-    if epochs2 > 0:
-        layers_inverted = []
+    else:
+        print('ERROR : Only DenseNet121 training is supported')
+        return
 
-        conv_layers = model.layers[0].layers
-        counter = 0
-        for i, layer in enumerate(reversed(conv_layers)):
-            if ('filters' in layer.get_config().keys() and
-                    counter < top_layers_ft):
-                layer.trainable = True
-                counter += 1
-            else:
-                layer.trainable = False
-            layers_inverted.append(layer)
+    model.save(path_model)
+    print(f'\nModel saved to {path_model}')
 
-        for layer in layers_inverted:
-            print('layer')
-            print(layer.get_config())
-        base = Sequential()
-        for layer in reversed(layers_inverted):
-            base.add(layer)
-        print(base.summary())
-        ft_model = Sequential()
-        ft_model.add(base)
-        for layer in model.layers[1:]:
-            ft_model.add(layer)
-        # print(model.layers[0].summary())
-        ft_model.compile(loss='categorical_crossentropy',
-                         optimizer=optimizers.RMSprop(lr=2e-5),
-                         metrics=['acc'])
-        ft_model.build()
+    classes_idx = train_generator.class_indices
+    classes = list(classes_idx.keys())
+    pickle.dump(classes, open(path_classes, "wb"))
+    print(f'Classes saved to {path_classes}')
 
-        print(ft_model.summary())
+    pickle.dump(history.history, open(path_history, "wb"))
+    print(f'History saved to {path_history}')
 
-        # history2 = model.fit_generator(train_generator,
-        # steps_per_epoch=1,
-        # epochs=epochs2,
-        # validation_data=test_generator,
-        # validation_steps=1)
+    acc = history.history['acc']
+    val_acc = history.history['val_acc']
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
 
-    return model
+    fig, ax = plt.subplots(ncols=2, figsize=(20, 10))
+    ax[0].plot(acc, label='train')
+    ax[0].plot(val_acc, label='test')
+    ax[0].set_xlabel('Epochs')
+    ax[0].set_ylabel('Accuracy')
+    ax[1].plot(loss, label='train')
+    ax[1].plot(val_loss, label='test')
+    ax[1].set_xlabel('Epochs')
+    ax[1].set_ylabel('Loss')
+
+    fig.suptitle(model.name)
+
+    fig.savefig(path_fig, dpi=fig.dpi)
+    print(f'Figure saved to {path_fig}')
