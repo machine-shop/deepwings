@@ -5,6 +5,5 @@ pytest
 scikit_image
 Keras
 matplotlib
-skimage
 scikit_learn
 tensorflow<=1.10.0

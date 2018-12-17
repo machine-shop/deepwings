@@ -176,7 +176,7 @@ def predict(category='species', path_raw='prediction/raw_images',
         path_model = f'training/models/ann/{category}/model.h5'
 
     if not os.path.exists(path_valid):
-        print('ERROR: no CSV files found in {path_valid}, try extracting'
+        print(f'ERROR: no CSV files found in {path_valid}, try extracting'
               ' features before predicting')
         return
 
