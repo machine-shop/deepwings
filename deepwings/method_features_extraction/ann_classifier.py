@@ -5,6 +5,7 @@ from keras.layers import Dense, Dropout
 from keras.models import load_model
 # from keras import regularizers
 from keras import optimizers
+from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 import os
 import pandas as pd
@@ -57,10 +58,20 @@ def ANN_classifier(input_dim, output_dim):
     classifier.add(Dense(output_dim=output_dim, init='uniform',
                          activation='softmax'))
 
+    sgd = optimizers.SGD(lr=0.003, decay=1e-4, momentum=0.9, nesterov=True)
+    classifier.compile(optimizer=sgd, loss='categorical_crossentropy',
+                       metrics=['accuracy'])
+
     return classifier
 
 
-def train(category, n_epochs=600):
+def random_forest():
+    clf = RandomForestClassifier(n_estimators=500, max_depth=20,
+                                 random_state=0)
+    return clf
+
+
+def data_training(category='species'):
 
     dict_info = pickle.load(open('training/info_train_test.p', 'rb'))
     classes = dict_info['classes']
@@ -88,25 +99,132 @@ def train(category, n_epochs=600):
     data_test = data[~mask_train]
 
     X_train = data_train[:, 1:-n_classes]
-    print(X_train[:10])
+    # print(X_train[:10])
     Y_train = data_train[:, -n_classes:]
 
     X_test = data_test[:, 1:-n_classes]
     Y_test = data_test[:, -n_classes:]
 
-    # Feature scaling : calculations
+    return X_train, Y_train, X_test, Y_test
+
+
+def train_rf(category='species'):
+
+    (X_train, Y_train, X_test, Y_test) = data_training(category)
+    dict_info = pickle.load(open('training/info_train_test.p', 'rb'))
+
+    y_train = []
+    for row in Y_train:
+        y_train.append(np.argmax(row))
+
+    y_test = []
+    for row in Y_test:
+        y_test.append(np.argmax(row))
+
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
 
+    classifier = random_forest()
+    classifier.fit(X_train, y_train)
+    acc_train = classifier.score(X_test, y_test)
+    acc_test = classifier.score(X_test, y_test)
+
+    print(f"\nTest size : {dict_info['test_size']}")
+    print(f'Accuracy_train : {acc_train}')
+    print(f'Accuracy_test : {acc_test}')
+    PREFIX = f'training/models/random_forest/{category}'
+
+    os.makedirs(PREFIX, exist_ok=True)
+
+    path_model = os.path.join(PREFIX, 'model.save')
+    path_scaler = os.path.join(PREFIX, 'scaler.save')
+    path_classes = os.path.join(PREFIX, 'classes.p')
+
+    pickle.dump(classifier, open(path_model, 'wb'))
+    print(f'Model saved to {path_model}')
+
+    joblib.dump(scaler, path_scaler)
+    print(f'Scaler saved to {path_scaler}')
+
+    pickle.dump(dict_info['classes'], open(path_classes, 'wb'))
+    print(f'Classes saved to {path_classes}')
+
+
+def predict_rf(category='species', path_raw='prediction/raw_images',
+               path_model=None, path_scaler=None,
+               path_info='training/info_train_test.p',
+               nb_pred=3):
+
+    path_raw = path_raw.rstrip(r'/ +')
+    path_parent = os.path.join(*path_raw.split('/')[:-1])
+    path_valid = os.path.join(path_parent, 'valid.csv')
+    path_prediction = os.path.join(path_parent,
+                                   f'prediction_rf_{category}.csv')
+    path_classes = f'training/models/random_forest/{category}/classes.p'
+
+    if not path_scaler:
+        path_scaler = f'training/models/random_forest/{category}/scaler.save'
+    if not path_model:
+        path_model = f'training/models/random_forest/{category}/model.save'
+
+    if not os.path.exists(path_valid):
+        print(f'ERROR: no CSV files found in {path_valid}, try extracting'
+              ' features before predicting')
+        return
+
+    if not os.path.exists(path_scaler):
+        print(f'{path_scaler} not found')
+        print('Try training before predicting: python pipeline.py -t ann')
+        return
+
+    print(f'Prediction folder : {path_raw}')
+    print(f'Model used : {path_model}')
+
+    dataset = pd.read_csv(path_valid)
+    data = dataset.iloc[:, :].values
+    X = data[:, 1:]
+    scaler = joblib.load(path_scaler)
+    X = scaler.transform(X)
+
+    classifier = pickle.load(open(path_model, "rb"))
+
+    y = classifier.predict_proba(X)
+
+    classes = pickle.load(open(path_classes, 'rb'))
+
+    with open(path_prediction, 'w') as csv_file:
+        writer = csv.writer(csv_file)
+
+        # Header
+        columns_pred = ['image_names']
+        for i in range(1, nb_pred + 1):
+            columns_pred += [f'prediction_{i}', f'score_{i}']
+        writer.writerow(columns_pred)
+
+        for i, pred in enumerate(y):
+            row = [data[i, 0]]
+            idx_pred = np.argsort(pred)[-nb_pred:][::-1]
+            for i in idx_pred:
+                row += [classes[i], round(pred[i], 4)]
+            writer.writerow(row)
+
+    print(f'Prediction successful, results in {path_prediction}')
+
+
+def train_ann(category='species', n_epochs=600):
+
+    (X_train, Y_train, X_test, Y_test) = data_training(category)
+
     classifier = ANN_classifier(input_dim=X_train.shape[1],
                                 output_dim=Y_train.shape[1])
 
-    # compiling the ANN
+    dict_info = pickle.load(open('training/info_train_test.p', 'rb'))
 
-    sgd = optimizers.SGD(lr=0.003, decay=1e-4, momentum=0.9, nesterov=True)
-    classifier.compile(optimizer=sgd, loss='categorical_crossentropy',
-                       metrics=['accuracy'])
+    # Feature scaling : calculations
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
 
     history = classifier.fit(X_train, Y_train, batch_size=40,
                              nb_epoch=n_epochs,
@@ -123,8 +241,8 @@ def train(category, n_epochs=600):
     print('Mean accuracies on last 20 epochs:')
     print('train_accuracy : ', train_accuracy)
     print('test_accuracy : ', test_accuracy)
-
     PREFIX = f'training/models/ann/{category}'
+
     os.makedirs(PREFIX, exist_ok=True)
 
     path_model = os.path.join(PREFIX, 'model.h5')
@@ -158,10 +276,10 @@ def train(category, n_epochs=600):
     print(f'Figure saved to {path_fig}')
 
 
-def predict(category='species', path_raw='prediction/raw_images',
-            path_model=None, path_scaler=None,
-            path_info='training/info_train_test.p',
-            n_descriptors=15, nb_pred=3):
+def predict_ann(category='species', path_raw='prediction/raw_images',
+                path_model=None, path_scaler=None,
+                path_info='training/info_train_test.p',
+                nb_pred=3):
 
     path_raw = path_raw.rstrip(r'/ +')
     path_parent = os.path.join(*path_raw.split('/')[:-1])

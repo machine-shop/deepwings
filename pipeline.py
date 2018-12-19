@@ -4,7 +4,7 @@ import os
 
 import deepwings.utils as utils
 import deepwings.method_cnn.cnn_prediction as cnnp
-from deepwings.method_features_extraction import ann_classifier as annc
+from deepwings.method_features_extraction import classification as clf
 from deepwings.method_cnn import cnn_training as cnnt
 from deepwings.method_features_extraction import features_extractor as fe
 
@@ -114,6 +114,14 @@ def main():
         print("ERROR: extraction must be 'pred' or 'train'")
         return
 
+    if args.train not in [None, 'cnn', 'ann', 'random_forest']:
+        print("ERROR: wrong classifier for training")
+        return
+
+    if args.model_prediction not in [None, 'cnn', 'ann', 'random_forest']:
+        print("ERROR: wrong classifier for prediction")
+        return
+
     pipeline_process = []
     if args.list_categories:
         pipeline_process += ['list_categories']
@@ -173,7 +181,10 @@ def main():
                                 continue_csv=False)
 
         elif step == 'train_ann':
-            annc.train(category=args.category)
+            clf.train_ann(args.category)
+
+        elif step == 'train_random_forest':
+            clf.train_rf(args.category)
 
         elif step == 'train_cnn':
             model = cnnt.build_model()
@@ -184,14 +195,17 @@ def main():
                              steps_per_epoch=args.steps_epoch)
 
         elif step == 'pred_ann':
-            annc.predict(category=args.category,
-                         path_raw=args.raw_images_prediction,
-                         path_model=args.path_ann,
-                         n_descriptors=args.n_fourier_descriptors)
+            clf.predict_ann(category=args.category,
+                            path_raw=args.raw_images_prediction,
+                            path_model=args.path_ann)
 
         elif step == 'pred_cnn':
             cnnp.cnn_pred(model_name=args.name_cnn,
                           path_raw=args.raw_images_prediction)
+
+        elif step == 'pred_random_forest':
+            clf.predict_rf(category=args.category,
+                           path_raw=args.raw_images_prediction)
 
 
 if __name__ == "__main__":

@@ -69,24 +69,29 @@ This method is preferred as it is faster and slightly more accurate. To predict 
 ```
 $ python pipeline.py -pred cnn 
 ```
-#### Feature extraction + ANN
+#### Feature extraction + random_forest/ann
 First you need to extract the features from your pictures, then run the ANN classifier :
 ```
 $ python pipeline.py -e pred
-$ python pipeline.py -pred ann
+$ python pipeline.py -pred random_forest
 ```
 or :
 ``` 
-$ python pipeline.py -e pred -pred ann
+$ python pipeline.py -e pred -pred random_forest
 ```
 Optional arguments :
 ```
-$ python pipeline.py -e pred -pred ann --plot --category genus
+$ python pipeline.py -e pred -pred random_forest --plot --category genus
 ```
 * *--plot, -p* : if specified, explanatory figures will be plotted in *prediction/valid_images/* and *prediction/invalid_images/*
 * *--category, -c* : 'genus' or 'species'(default). Specifies if the model must be a genus or species classifier.
 
 The prediction results should appear in a csv file in *prediction/prediction_ann.csv*.
+
+You can also use a pretrained ANN model :
+``` 
+$ python pipeline.py -e pred -pred ann 
+```
 
 
 ### Training
@@ -100,7 +105,7 @@ In addition, you may add the following information (optional) : the subspecies o
 
 Example : *30 Lasioglossum rohweri f left 4x bx.jpg* or *1239 Osmia lignaria propinqua f right 4x.jpg*
 
-#### 2 Building the dataset
+#### 2. Building the dataset
 
 
 ``` 
@@ -120,7 +125,7 @@ $ python pipeline.py -l --category genus --min_images 5
 ```
 
 
-#### 3 Train DenseNet121
+#### 3. Train DenseNet121
 It's strongly advised to run this with a GPU:
 
 ```
@@ -162,7 +167,21 @@ $ python pipeline.py -e train --plot --n_fourier_descriptors 25
 * *--n_fourier_descriptors, -fd* : number of fourier descriptors extracted for each cell detected (15 by default) 
 * *--plot, -p* : if specified, explanatory figures will be plotted in *training/valid_images/* and *training/invalid_images/*
 
-#### 3. Artificial Neural Network
+#### 5. Random Forest
+
+Then you can proceed to train the random forest:
+```
+$ python pipeline.py -t random_forest [-c genus]
+```
+This will update the models in *training/models/random_forest/[category]/*.
+
+To use this model on prediction/raw_images/:
+```
+$ python pipeline.py -e pred
+$ python pipeline.py -pred random_forest [-c genus]
+```
+
+#### 6. Artificial Neural Network
 This is a very basic ANN, any other classifier could be used for this task. Once the features are extracted, you can run:
 
 Then you can proceed to train :
