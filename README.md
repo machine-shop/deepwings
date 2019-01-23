@@ -2,6 +2,32 @@
 
 This project follows the beewing project : https://github.com/machine-shop/beewing, which is itself inspired by the idBee project from the University of Wisconsin-Madison : http://idbee.ece.wisc.edu/
 
+## Description
+
+This project enables to classify bee species from pictures of their wings.
+
+Supported species (21):
+- Agapostemon sericeus
+- Agapostemon texanus
+- Agapostemon virescens
+- Bombus bimaculata
+- Bombus griseocolis
+- Bombus impatiens
+- Ceratina calcarata
+- Lasioglossum acuminatum
+- Lasioglossum coriaceum
+- Lasioglossum leucozonium
+- Lasioglossum mawispb
+- Lasioglossum nymphaerum
+- Lasioglossum pilosum
+- Lasioglossum rohweri
+- Lasioglossum zephyrum
+- Lasioglossum zonulum
+- Osmia coloradensis
+- Osmia lignaria
+- Osmia pusilla
+- Osmia ribifloris
+- Osmia texana
 
 ## Project motivation
 
@@ -16,6 +42,7 @@ There are many species of bees, more than 500 in Wisconsin alone, but it's not e
 While bee species identification is essential to research, identifying the species of a bee can be expensive and time-consuming. Since there are few experts who can reliably distinguish many different species, bees must be captured and sent to an expert, which may take several months. Bee research can be excruciatingly slow.
 
 Rather than capturing, killing, and sending the bees off to be catalogued, imagine an iPhone app that lets graduate students and researchers identify bees in the field. One could simply take a photo of a bee and instantly record its species and location. Research could be conducted much faster, and identified bees could be released back to nature."
+
 
 ## Improvements
 
