@@ -15,13 +15,13 @@
 
 \author{Théo Bodrito}
 
-\date{\today}
+\date{December 21, 2018}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-    Bees have been dying off at an extraordinary high rate, and no one is quite sure why. To investigate this issue, researchers need a quicka and reliable way to identify bee species. This document introduces the Deepwings project, which uses both deep learning and features extraction to classify bee species from wings pictures.
+    Bees have been dying off at an extraordinary high rate, and no one is quite sure why. To investigate this issue, researchers need a quick and reliable way to identify bee species. This document introduces the Deepwings project, which compares deep learning and features extraction approaches to classify bee species from wings pictures.
 
 
 \end{abstract}
@@ -40,12 +40,11 @@ While bee species identification is essential to research, identifying the speci
 Rather than capturing, killing, and sending the bees off to be catalogued, imagine an iPhone app that lets graduate students and researchers identify bees in the field. One could simply take a photo of a bee and instantly record its species and location. Research could be conducted much faster, and identified bees could be released back to nature.
 
 
-\section{Previous work}
+\section{Previous work in bee wings identification}
 \label{sec:theory}
 
-\subsection{An Automated Approach to Bee Identification from Wing Venation}
+We relied mostly on Christopher Hall's work for features extraction: \textit{An Automated Approach to Bee Identification from Wing Venation} (2011).
 
-\newpage
 \section{Dataset}
 The initial dataset was composed of 1193 images, but we cleaned it so as to have at least 20 images per species.
 So the dataset we used consists of 1135 images belonging to different genera, and each genus is divided into different species as follows :
@@ -135,6 +134,48 @@ ytick=data,
 
 \vspace{10cm}
 \section{First method : CNN}
+Convolutional Neural Networks are best suited for image classification. 
+We compared two different architectures: VGG16 and DenseNet121.
+
+\subsection{VGG16}
+This model came out in 2014. It is a very deep and very classical CNN base folowed by 3 Dense layers.
+It achieved great performance at the time, but one of its biggest flaw is its size: it can be very difficult to train it from scratch.
+
+\begin{figure}[h]
+    \centering
+\includegraphics[width=.6\textwidth]{figures/architecture_vgg16.png}
+\caption{Architecture base VGG16}
+\end{figure}
+
+Our dataset was not big enough, that's why we had to use \textit{transfer learning} : the idea is to use a pretrained convolutional base (trained on imagenet).
+The first step is to train the top layers (the dense ones) while the weigths of the base remain frozen. Then, we defreeze the top 3 layers of the  convolutional base, to fit our dataset more precisely. This last step is called \textit{fine tuning}.
+
+\begin{figure}[h]
+    \centering
+\includegraphics[width=.8\textwidth]{figures/vgg16_graph_caption.png}
+\caption{VGG16 training with fine-tuning}
+\end{figure}
+
+\newpage
+\subsection{DensetNet121}
+DensNets came out in 2016. 
+This model is lighter than VGG16 and faster to train than VGG16 thanks to shorter connections between layers: each layer is connected to every other layer in a feed-forward fashion. 
+
+\begin{figure}[h]
+    \centering
+\includegraphics[width=.8\textwidth]{figures/densenet121_architecture.png}
+    \caption{Architecture DenseNet121}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+\includegraphics[width=.8\textwidth]{figures/graph_densenet.png}
+    \caption{DenseNet121 training (without fine-tuning)}
+\end{figure}
+
+As you can see on the curves, DenseNet121 reaches better accuracy than VGG16 on the same dataset (95\% vs 88\%).
+Furthermore, its light weight make it the perfect CNN model for our project.
+
 
 \section{Second method : Features extraction}
 
@@ -455,16 +496,26 @@ valid & 1034 (91\%)  & 1135 (100\%)\\
 \hline
 \end{tabular}
 
-\newpage
-\subsection{Classification}
-
-\subsubsection{Neural network}
-\subsubsection{Random forest}
-
-\newpage
-\section{Combining both approaches}
+We then applied a Random Forest classifier on the valid dataset, which had a 83\% accuracy on test set (and 100\% on training set).
 
 \newpage
 \section{Conclusion}
 
+\begin{figure}[h]
+    \centering
+    \begin{tabular}{ |c|c|c| }
+ \hline
+Model & training accuracy & test accuracy\\
+\hline
+DenseNet121& 99\% & 95\%\\
+\hline
+VGG16& 98\% & 88\%\\
+\hline
+    \makecell{Features extraction + \\Random Forest \\(on valid dataset)}& 100\% & 83\% \\
+\hline
+\end{tabular}
+\caption{Models comparison}
+\end{figure}
+
+We can see the CNN models remain more accurate than features extraction + random forest with out method, at the cost of a heavier model. Furthermore, no features engineering is required with CNN, whichh is a huge advantage in such a project. 
 \end{document}
