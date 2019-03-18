@@ -127,7 +127,7 @@ def train_rf(category='species'):
 
     classifier = random_forest()
     classifier.fit(X_train, y_train)
-    acc_train = classifier.score(X_test, y_test)
+    acc_train = classifier.score(X_train, y_train)
     acc_test = classifier.score(X_test, y_test)
 
     print(f"\nTest size : {dict_info['test_size']}")

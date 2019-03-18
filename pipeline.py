@@ -110,7 +110,7 @@ def main():
     if args.category not in ['genus', 'species']:
         print("ERROR: category must be 'genus' or 'species'")
         return
-    if args.extraction not in [None, 'training', 'pred']:
+    if args.extraction not in [None, 'train', 'pred']:
         print("ERROR: extraction must be 'pred' or 'train'")
         return
 
@@ -129,7 +129,7 @@ def main():
         pipeline_process += ['sort']
     if args.extraction == 'pred':
         pipeline_process += ['extraction_pred']
-    if args.extraction == 'training':
+    if args.extraction == 'train':
         pipeline_process += ['extraction_training']
     if args.train:
         pipeline_process += [f'train_{args.train}']
