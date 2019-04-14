@@ -124,7 +124,7 @@ $ python pipeline.py -e pred -pred ann
 ### Training
 
 Move all your raw images to *training/raw_images/*. Then run:
-The dataset used in this project is available [here](https://www.dropbox.com/sh/r04kyryo6ljs6x0/AAAhAU4XKVJzuRyrroYLVdnua?dl=0)
+The dataset used in this project is available [here](https://www.dropbox.com/s/5pu4934n72vycir/bee_wings_data.zip?dl=0)
 
 #### 1. Filename convention
 The name of each image is composed of an unique identification number (per bee), the genus of the bee, the species of the bee.
