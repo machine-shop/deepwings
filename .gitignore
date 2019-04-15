@@ -1,4 +1,5 @@
 training/raw_images/
+training/models/
 **/valid_images
 **/invalid_images
 **/sorted_genus

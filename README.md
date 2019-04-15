@@ -85,6 +85,10 @@ On the other side, those types of images should be avoided :
 ![image](./examples/ex5.jpg)
 
 
+## Download the models
+
+Download the models using [this link](https://www.dropbox.com/sh/b0g2fa2l2yno9w8/AAAmehs4TMMfMqQDibqhlzNpa?dl=0).
+They should be placed in deepwings/training/models/.
 
 
 ### Predicting
